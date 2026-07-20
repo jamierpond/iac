@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <filesystem>
 #include <map>
 #include <random>
 #include <string>
@@ -22,9 +23,10 @@ struct Message
 {
     std::string sender;
     std::string text;
+    std::string cwd;
     std::int64_t timestamp = 0;
 
-    MIRO_REFLECT(sender, text, timestamp)
+    MIRO_REFLECT(sender, text, cwd, timestamp)
 };
 
 using Messages = std::map<std::string, Message>;
@@ -64,6 +66,26 @@ std::string makeKey(std::int64_t timestamp)
     return key;
 }
 
+std::string currentDirectory()
+{
+    auto error = std::error_code {};
+    const auto path = std::filesystem::current_path(error);
+    if (error)
+        return {};
+    return eacp::FilePath {path}.str();
+}
+
+// "~/projects/iac" reads better than the poster's full home prefix — but only
+// abbreviate when the home matches ours, so paths from another user's room
+// stay intact.
+std::string abbreviateHome(const std::string& path)
+{
+    const auto& home = eacp::FilePath::homeDirectory().str();
+    if (!home.empty() && path.starts_with(home))
+        return "~" + path.substr(home.size());
+    return path;
+}
+
 std::string formatTime(std::int64_t timestamp)
 {
     const auto seconds = static_cast<std::time_t>(timestamp / 1000);
@@ -80,9 +102,13 @@ std::string formatTime(std::int64_t timestamp)
 
 void printMessage(const Message& message)
 {
+    auto from = message.sender;
+    if (!message.cwd.empty())
+        from += " (" + abbreviateHome(message.cwd) + ")";
+
     std::printf("[%s] %s: %s\n",
                 formatTime(message.timestamp).c_str(),
-                message.sender.c_str(),
+                from.c_str(),
                 message.text.c_str());
     std::fflush(stdout);
 }
@@ -90,7 +116,7 @@ void printMessage(const Message& message)
 int publish(const std::string& text, const std::string& sender)
 {
     auto messages = openRoom().collection<Message>("messages");
-    const auto message = Message {sender, text, nowMs()};
+    const auto message = Message {sender, text, currentDirectory(), nowMs()};
 
     if (!messages.doc(makeKey(message.timestamp)).set(message))
     {
@@ -147,21 +173,59 @@ struct Monitor
                                      [this] { printNewMessages(); }};
 };
 
-int usage(int code)
+constexpr auto usageText = "usage:\n"
+                           "  iac publish <message...> [--from <name>]\n"
+                           "  iac monitor\n"
+                           "  iac read [-n <count>]\n";
+
+int usageError()
 {
-    std::fputs("iac — inter-agent chat, a local chatroom backed by emberstore\n"
+    std::fputs(usageText, stderr);
+    std::fputs("\nrun 'iac help' for details\n", stderr);
+    return 2;
+}
+
+int help()
+{
+    std::fputs("iac — inter-agent chat\n"
                "\n"
-               "usage:\n"
-               "  iac publish <message...> [--from <name>]\n"
-               "  iac monitor              stream incoming messages\n"
-               "  iac read [-n <count>]    print the last <count> messages "
-               "(default 20)\n"
+               "A local chatroom for coding agents (and humans), backed by\n"
+               "emberstore. Messages live in one shared JSON collection on\n"
+               "disk; any process on this machine can publish, read, or\n"
+               "stream them. No server — atomic file writes, an inter-process\n"
+               "lock, and a native file watcher.\n"
+               "\n",
+               stdout);
+    std::fputs(usageText, stdout);
+    std::fputs("\n"
+               "commands:\n"
+               "  publish   Post a message to the room. All non-flag arguments are\n"
+               "            joined into one message, so quoting is optional. The\n"
+               "            working directory is recorded with the message, so\n"
+               "            readers can see which project the sender was in.\n"
+               "              --from <name>   sender name for this message only\n"
+               "                              (otherwise IAC_NAME, then $USER)\n"
+               "  monitor   Stream messages as they arrive, one line each. Prints\n"
+               "            only messages published after it starts — use 'read'\n"
+               "            to catch up on history. Runs until interrupted.\n"
+               "  read      Print the last <count> messages, oldest first.\n"
+               "              -n <count>      how many to print (default 20)\n"
+               "\n"
+               "output format:\n"
+               "  [14:32:07] planner (~/projects/tamber-web): deploy is green\n"
                "\n"
                "environment:\n"
                "  IAC_NAME  sender name (default: $USER)\n"
-               "  IAC_DIR   room directory (default: ~/.iac)\n",
-               stderr);
-    return code;
+               "  IAC_DIR   room directory (default: ~/.iac). Processes pointed\n"
+               "            at the same directory share a room; use another path\n"
+               "            for a private channel.\n"
+               "\n"
+               "examples:\n"
+               "  iac publish \"starting the migration\" --from planner\n"
+               "  IAC_NAME=reviewer iac monitor\n"
+               "  iac read -n 50\n",
+               stdout);
+    return 0;
 }
 
 int runPublish(const std::vector<std::string>& args)
@@ -182,7 +246,7 @@ int runPublish(const std::vector<std::string>& args)
     }
 
     if (text.empty())
-        return usage(2);
+        return usageError();
     return publish(text, sender);
 }
 
@@ -200,7 +264,7 @@ int main(int argc, char* argv[])
 {
     const auto args = std::vector<std::string> {argv + 1, argv + argc};
     if (args.empty())
-        return iac::usage(2);
+        return iac::usageError();
 
     const auto& command = args.front();
 
@@ -211,8 +275,8 @@ int main(int argc, char* argv[])
     if (command == "monitor")
         return eacp::Apps::run<iac::Monitor>();
     if (command == "help" || command == "--help" || command == "-h")
-        return iac::usage(0);
+        return iac::help();
 
     std::fprintf(stderr, "iac: unknown command '%s'\n\n", command.c_str());
-    return iac::usage(2);
+    return iac::usageError();
 }

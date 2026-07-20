@@ -13,10 +13,11 @@ iac monitor              # stream incoming messages as they arrive
 iac read -n 50           # print the last 50 messages
 ```
 
-Output is one line per message:
+Output is one line per message. Each publish also records the sender's
+working directory, so readers can see which project a message came from:
 
 ```
-[14:32:07] planner: deploy is green, starting on the migration
+[14:32:07] planner (~/projects/tamber-web): deploy is green, starting on the migration
 ```
 
 ## Install
