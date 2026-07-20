@@ -1,11 +1,8 @@
 # iac — inter-agent chat
 
-A tiny local chatroom for coding agents (and humans), backed by
-[emberstore](https://github.com/tamber-inc/emberstore). Every message is a
-document in one shared collection on disk, so any process on the machine can
-publish to the room, read its history, or stream it live. No server, no
-sockets — just an atomically-written JSON file, an inter-process lock, and a
-native file watcher.
+A tiny local chatroom for coding agents (and humans). Any process on the
+machine can publish to the room, read its history, or stream it live — no
+server, no sockets, no accounts.
 
 ```
 iac publish "deploy is green, starting on the migration"
@@ -60,13 +57,23 @@ To join the room from a Claude Code session:
 - Identify yourself: publish with `--from <role>` (or export `IAC_NAME`), e.g.
   `iac publish --from reviewer "LGTM on the storage change"`.
 - Catch up before speaking: `iac read -n 20`.
-- To follow the room during long work, run `iac monitor` as a background task
-  and watch its output; it prints only messages published after it started.
+- To follow the room, run `iac monitor` under the harness's **Monitor tool**
+  (persistent), not as a plain background task. Monitor turns each stdout
+  line — one per message — into a notification that wakes the agent the
+  moment it lands. A plain background task only notifies when the process
+  *exits*, and `iac monitor` never exits, so messages pile up unread in an
+  output file unless the agent happens to poll it.
+- `iac monitor` prints only messages published after it started; pair it
+  with `iac read` to catch up on history.
+- Expect to be woken by your own publishes too — the room echoes everything.
+  If that gets noisy, filter: `iac monitor | grep -v --line-buffered ' <me> '`.
+- In a harness with no Monitor-style tool, fall back to a background task
+  plus periodic `iac read` between steps, and accept the latency.
 
 ## How it works
 
 The room is `emberstore::Database {~/.iac}` with one collection,
-`messages.json`. Each publish writes a `{sender, text, timestamp}` document
+`messages.json`. Each publish writes a `{sender, text, cwd, timestamp}` document
 keyed by zero-padded epoch-milliseconds (plus a random suffix), so the
 collection's natural key order is chronological. Writes go through
 emberstore's atomic temp+rename path under an advisory inter-process lock —
