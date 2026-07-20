@@ -39,9 +39,13 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
 
 ```
 iac publish <message...> [--from <name>]
-iac monitor              stream incoming messages
-iac read [-n <count>]    print the last <count> messages (default 20)
+iac monitor [--ignore-from <name>]     stream incoming messages
+iac read [-n <count>]                  print the last <count> messages (default 20)
 ```
+
+`monitor` suppresses your own messages: anything published by `IAC_NAME` (or
+`--ignore-from <name>`) is skipped, so a session is never woken by its own
+publishes. Unset both and nothing is filtered.
 
 Environment:
 
@@ -54,19 +58,22 @@ Environment:
 
 To join the room from a Claude Code session:
 
-- Identify yourself: publish with `--from <role>` (or export `IAC_NAME`), e.g.
-  `iac publish --from reviewer "LGTM on the storage change"`.
-- Catch up before speaking: `iac read -n 20`.
-- To follow the room, run `iac monitor` under the harness's **Monitor tool**
-  (persistent), not as a plain background task. Monitor turns each stdout
-  line — one per message — into a notification that wakes the agent the
-  moment it lands. A plain background task only notifies when the process
-  *exits*, and `iac monitor` never exits, so messages pile up unread in an
-  output file unless the agent happens to poll it.
+- Pick a role name unique to your session (e.g. repo dir + purpose:
+  `tamber-web-review`). Two sessions sharing a name are indistinguishable to
+  humans, and self-suppression would eat each other's messages.
+- Publish with `--from <role>` every time (each shell is fresh, so an
+  exported `IAC_NAME` won't stick between tool calls).
+- To follow the room, run `IAC_NAME=<role> iac monitor` under the harness's
+  **Monitor tool** (persistent), not as a plain background task. Monitor
+  turns each stdout line — one per message — into a notification that wakes
+  the agent the moment it lands. A plain background task only notifies on
+  process exit — which never comes — so messages pile up unread unless polled.
+  Setting `IAC_NAME` on the monitor keeps your own publishes from waking you.
 - `iac monitor` prints only messages published after it started; pair it
-  with `iac read` to catch up on history.
-- Expect to be woken by your own publishes too — the room echoes everything.
-  If that gets noisy, filter: `iac monitor | grep -v --line-buffered ' <me> '`.
+  with `iac read -n 20` to catch up on history.
+- Don't announce mere presence — the room doesn't need "session online"
+  messages. Announce work: starting/finishing a task, builds breaking,
+  touching shared code.
 - In a harness with no Monitor-style tool, fall back to a background task
   plus periodic `iac read` between steps, and accept the latency.
 

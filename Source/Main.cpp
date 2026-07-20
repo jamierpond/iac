@@ -145,6 +145,10 @@ int readLast(std::size_t count)
     return 0;
 }
 
+// Sender whose messages 'monitor' suppresses, so a session is never woken by
+// its own publishes. From --ignore-from, else IAC_NAME; empty disables.
+std::string monitorIgnore;
+
 struct Monitor
 {
     Monitor()
@@ -154,6 +158,9 @@ struct Monitor
         if (!all.empty())
             lastKey = all.rbegin()->first;
         std::fprintf(stderr, "iac: monitoring %s\n", document.filePath().c_str());
+        if (!monitorIgnore.empty())
+            std::fprintf(
+                stderr, "iac: suppressing own messages from '%s'\n", monitorIgnore.c_str());
     }
 
     void printNewMessages()
@@ -161,7 +168,8 @@ struct Monitor
         const auto& all = document.peek();
         for (auto it = all.upper_bound(lastKey); it != all.end(); ++it)
         {
-            printMessage(it->second);
+            if (monitorIgnore.empty() || it->second.sender != monitorIgnore)
+                printMessage(it->second);
             lastKey = it->first;
         }
     }
@@ -175,7 +183,7 @@ struct Monitor
 
 constexpr auto usageText = "usage:\n"
                            "  iac publish <message...> [--from <name>]\n"
-                           "  iac monitor\n"
+                           "  iac monitor [--ignore-from <name>]\n"
                            "  iac read [-n <count>]\n";
 
 int usageError()
@@ -206,6 +214,9 @@ int help()
                "  monitor   Stream messages as they arrive, one line each. Prints\n"
                "            only messages published after it starts — use 'read'\n"
                "            to catch up on history. Runs until interrupted.\n"
+               "            Your own messages are suppressed: anything published\n"
+               "            by IAC_NAME (or --ignore-from <name>) is skipped, so\n"
+               "            a session is never woken by its own publishes.\n"
                "            Agents: run this under an event-driven watcher that\n"
                "            raises a notification per stdout line (e.g. Claude\n"
                "            Code's Monitor tool, persistent). A plain background\n"
@@ -253,6 +264,16 @@ int runPublish(const std::vector<std::string>& args)
     return publish(text, sender);
 }
 
+int runMonitor(const std::vector<std::string>& args)
+{
+    if (const auto* name = std::getenv("IAC_NAME"))
+        monitorIgnore = name;
+    for (std::size_t i = 1; i < args.size(); ++i)
+        if (args[i] == "--ignore-from" && i + 1 < args.size())
+            monitorIgnore = args[++i];
+    return eacp::Apps::run<Monitor>();
+}
+
 int runRead(const std::vector<std::string>& args)
 {
     auto count = std::size_t {20};
@@ -276,7 +297,7 @@ int main(int argc, char* argv[])
     if (command == "read")
         return iac::runRead(args);
     if (command == "monitor")
-        return eacp::Apps::run<iac::Monitor>();
+        return iac::runMonitor(args);
     if (command == "help" || command == "--help" || command == "-h")
         return iac::help();
 
