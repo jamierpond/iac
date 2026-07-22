@@ -1,8 +1,8 @@
 # iac — inter-agent chat
 
-A tiny local chatroom for coding agents (and humans). Any process on the
-machine can publish to the room, read its history, or stream it live — no
-server, no sockets, no accounts.
+A tiny chatroom for coding agents (and humans). Any process can publish to
+the room, read its history, or stream it live — no server, no sockets, no
+accounts. Rooms live on one machine; agents on other machines join over ssh.
 
 ```
 iac publish "deploy is green, starting on the migration"
@@ -43,6 +43,8 @@ iac monitor [--ignore-from <name>]     stream incoming messages
 iac read [-n <count>]                  print the last <count> messages (default 20)
 ```
 
+Every command also takes `--room <dir | [user@]host:dir>` (see below).
+
 `monitor` suppresses your own messages: anything published by `IAC_NAME` (or
 `--ignore-from <name>`) is skipped, so a session is never woken by its own
 publishes. Unset both and nothing is filtered.
@@ -50,9 +52,43 @@ publishes. Unset both and nothing is filtered.
 Environment:
 
 - `IAC_NAME` — sender name shown on published messages (default: `$USER`).
-- `IAC_DIR` — room directory (default: `~/.iac`). Point several processes at
-  the same directory and they share a room; point it elsewhere for a private
-  channel.
+- `IAC_DIR` — room spec, same forms as `--room` (default: `~/.iac`). Point
+  several processes at the same room and they share it; point it elsewhere
+  for a private channel.
+
+## Rooms across machines
+
+A room spec is either a local emberstore directory or an scp-style
+`[user@]host:dir` naming a room on another machine:
+
+```
+iac monitor --room jamie@tamby:                # tamby's default room (~/.iac)
+iac publish "build green" --room tamby:.iac-team
+IAC_DIR=jamie@tamby: iac read -n 50            # env works the same way
+```
+
+Remote rooms forward the whole invocation over ssh: iac re-invokes itself on
+the host with the room's directory, and the remote binary's output — one
+line per message — streams back over the connection, so `monitor` stays
+live. Requirements:
+
+- `iac` installed on the host (`~/.local/bin` or `PATH`).
+- Key-based ssh auth. Outside a terminal iac sets `BatchMode=yes`, so a
+  password prompt fails fast instead of hanging an agent's tool call.
+- An `ssh` config alias works as the host, and `ControlMaster`/
+  `ControlPersist` in `~/.ssh/config` makes per-publish handshakes cheap.
+
+Sender name and origin are resolved on the *publishing* machine: a remote
+publish is stamped `host:~/dir`, so readers see which machine and project it
+came from:
+
+```
+[14:32:07] planner (daily-driver:~/projects/tamber-web): deploy is green
+```
+
+To span a fleet, pick one machine to host the room and brief every agent on
+the other machines with `IAC_DIR=user@host:` (or `--room` per command) —
+agents on the hosting machine keep using the local default.
 
 ## For agents
 
@@ -76,6 +112,10 @@ To join the room from a Claude Code session:
   touching shared code.
 - In a harness with no Monitor-style tool, fall back to a background task
   plus periodic `iac read` between steps, and accept the latency.
+- On another machine, arm the monitor the same way with the room spec:
+  `IAC_NAME=<role> iac monitor --room user@host:` — everything else in this
+  list applies unchanged (append `--room` to `publish`/`read` too, or set
+  `IAC_DIR=user@host:` on each call).
 
 ## How it works
 
@@ -87,4 +127,7 @@ emberstore's atomic temp+rename path under an advisory inter-process lock —
 concurrent publishers never tear the file. `monitor` is an eacp app running
 the native event loop, using emberstore's `FileWatcher` (FSEvents on macOS,
 ReadDirectoryChangesW on Windows) to print anything past the last key it has
-seen.
+seen. A remote room is the same thing running on its own machine: the local
+iac just `exec`s `ssh host 'exec iac ...'` with `IAC_DIR` set, resolving
+sender/origin locally first so the remote side never falls back to its own
+environment.

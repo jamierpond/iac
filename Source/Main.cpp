@@ -1,6 +1,7 @@
 // iac — inter-agent chat. A tiny local chatroom backed by emberstore: every
 // message is a document in one shared collection, so any process on the
-// machine can publish, read, or stream it.
+// machine can publish, read, or stream it. Rooms on other machines are
+// reached by forwarding the whole invocation over ssh to the iac there.
 
 #include <eacp/Core/Core.h>
 #include <emberstore/Emberstore.h>
@@ -12,10 +13,18 @@
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
+#include <iterator>
 #include <map>
 #include <random>
 #include <string>
 #include <vector>
+
+#ifdef _WIN32
+    #include <io.h>
+    #include <process.h>
+#else
+    #include <unistd.h>
+#endif
 
 namespace iac
 {
@@ -31,10 +40,32 @@ struct Message
 
 using Messages = std::map<std::string, Message>;
 
+// A room is normally a local emberstore directory, but an scp-style spec
+// ("[user@]host:dir") names one on another machine, reached over ssh.
+struct Room
+{
+    std::string sshTarget;
+    std::string directory;
+
+    bool remote() const { return !sshTarget.empty(); }
+};
+
+// scp's rule: a colon before the first slash splits host from path. An empty
+// path ("host:") means the remote default room.
+Room parseRoomSpec(const std::string& spec)
+{
+    const auto colon = spec.find(':');
+    if (colon != std::string::npos && colon > 0 && spec.find('/') > colon)
+        return {spec.substr(0, colon), spec.substr(colon + 1)};
+    return {{}, spec};
+}
+
+Room activeRoom;
+
 eacp::FilePath roomDirectory()
 {
-    if (const auto* custom = std::getenv("IAC_DIR"))
-        return custom;
+    if (!activeRoom.directory.empty())
+        return activeRoom.directory;
     return eacp::FilePath::homeDirectory() / ".iac";
 }
 
@@ -86,6 +117,92 @@ std::string abbreviateHome(const std::string& path)
     return path;
 }
 
+std::string shortHostname()
+{
+#ifdef _WIN32
+    const auto* name = std::getenv("COMPUTERNAME");
+    auto host = std::string {name != nullptr ? name : ""};
+#else
+    char name[256] = {};
+    auto host = std::string {gethostname(name, sizeof(name) - 1) == 0 ? name : ""};
+#endif
+    if (const auto dot = host.find('.'); dot != std::string::npos)
+        host.resize(dot);
+    return host.empty() ? "remote" : host;
+}
+
+bool stdinIsTty()
+{
+#ifdef _WIN32
+    return _isatty(_fileno(stdin)) != 0;
+#else
+    return isatty(STDIN_FILENO) != 0;
+#endif
+}
+
+std::string shellQuote(const std::string& text)
+{
+    auto quoted = std::string {"'"};
+    for (const auto character: text)
+        if (character == '\'')
+            quoted += "'\\''";
+        else
+            quoted += character;
+    return quoted + "'";
+}
+
+// Re-invoke iac on the room's host: the remote binary does the emberstore
+// work and its stdout (one line per message) streams back over the
+// connection, so even 'monitor' stays live. Callers resolve sender names and
+// directories locally before forwarding — the remote side must not fall back
+// to its own environment.
+int runOverSsh(const std::vector<std::string>& arguments)
+{
+    // A leading ~ must expand on the remote side, where quoting would
+    // defeat it — splice in "$HOME" and quote only the remainder.
+    auto command = std::string {"PATH=\"$HOME/.local/bin:$PATH\"; export PATH; "};
+    const auto& directory = activeRoom.directory;
+    if (!directory.empty())
+    {
+        if (directory == "~")
+            command += "IAC_DIR=\"$HOME\"; ";
+        else if (directory.starts_with("~/"))
+            command += "IAC_DIR=\"$HOME\"" + shellQuote(directory.substr(1)) + "; ";
+        else
+            command += "IAC_DIR=" + shellQuote(directory) + "; ";
+        command += "export IAC_DIR; ";
+    }
+    command += "exec iac";
+    for (const auto& argument: arguments)
+        command += ' ' + shellQuote(argument);
+
+    auto ssh =
+        std::vector<std::string> {"ssh", "-T", "-o", "ServerAliveInterval=30"};
+    if (!stdinIsTty())
+        ssh.insert(ssh.end(), {"-o", "BatchMode=yes"});
+    ssh.push_back(activeRoom.sshTarget);
+    ssh.push_back(command);
+
+    auto argv = std::vector<char*> {};
+    for (auto& argument: ssh)
+        argv.push_back(argument.data());
+    argv.push_back(nullptr);
+
+#ifdef _WIN32
+    const auto status = _spawnvp(_P_WAIT, "ssh", argv.data());
+    if (status < 0)
+    {
+        std::perror("iac: could not run ssh");
+        return 127;
+    }
+    return static_cast<int>(status);
+#else
+    execvp("ssh", argv.data());
+    std::perror("iac: could not run ssh");
+    return 127;
+#endif
+}
+
 std::string formatTime(std::int64_t timestamp)
 {
     const auto seconds = static_cast<std::time_t>(timestamp / 1000);
@@ -113,10 +230,12 @@ void printMessage(const Message& message)
     std::fflush(stdout);
 }
 
-int publish(const std::string& text, const std::string& sender)
+int publish(const std::string& text,
+            const std::string& sender,
+            const std::string& cwd)
 {
     auto messages = openRoom().collection<Message>("messages");
-    const auto message = Message {sender, text, currentDirectory(), nowMs()};
+    const auto message = Message {sender, text, cwd, nowMs()};
 
     if (!messages.doc(makeKey(message.timestamp)).set(message))
     {
@@ -159,8 +278,9 @@ struct Monitor
             lastKey = all.rbegin()->first;
         std::fprintf(stderr, "iac: monitoring %s\n", document.filePath().c_str());
         if (!monitorIgnore.empty())
-            std::fprintf(
-                stderr, "iac: suppressing own messages from '%s'\n", monitorIgnore.c_str());
+            std::fprintf(stderr,
+                         "iac: suppressing own messages from '%s'\n",
+                         monitorIgnore.c_str());
     }
 
     void printNewMessages()
@@ -181,10 +301,13 @@ struct Monitor
                                      [this] { printNewMessages(); }};
 };
 
-constexpr auto usageText = "usage:\n"
-                           "  iac publish <message...> [--from <name>]\n"
-                           "  iac monitor [--ignore-from <name>]\n"
-                           "  iac read [-n <count>]\n";
+constexpr auto usageText =
+    "usage:\n"
+    "  iac publish <message...> [--from <name>]\n"
+    "  iac monitor [--ignore-from <name>]\n"
+    "  iac read [-n <count>]\n"
+    "\n"
+    "  every command also takes --room <dir | [user@]host:dir>\n";
 
 int usageError()
 {
@@ -197,9 +320,9 @@ int help()
 {
     std::fputs("iac — inter-agent chat\n"
                "\n"
-               "A local chatroom for the coding agents (and humans) on this\n"
-               "machine. Any process can post to the room, stream it live,\n"
-               "or read back its history.\n"
+               "A chatroom for coding agents (and humans). Any process can\n"
+               "post to the room, stream it live, or read back its history —\n"
+               "on this machine or, over ssh, on another one.\n"
                "\n",
                stdout);
     std::fputs(usageText, stdout);
@@ -211,6 +334,7 @@ int help()
                "            readers can see which project the sender was in.\n"
                "              --from <name>   sender name for this message only\n"
                "                              (otherwise IAC_NAME, then $USER)\n"
+               "              --cwd <label>   override the recorded directory\n"
                "  monitor   Stream messages as they arrive, one line each. Prints\n"
                "            only messages published after it starts — use 'read'\n"
                "            to catch up on history. Runs until interrupted.\n"
@@ -225,19 +349,32 @@ int help()
                "  read      Print the last <count> messages, oldest first.\n"
                "              -n <count>      how many to print (default 20)\n"
                "\n"
+               "rooms:\n"
+               "  A room is an emberstore directory (default ~/.iac). --room, or\n"
+               "  the IAC_DIR environment variable, points a command elsewhere:\n"
+               "    --room /some/dir          another room on this machine\n"
+               "    --room [user@]host:dir    a room on another machine, over ssh\n"
+               "    --room user@host:         that machine's default room (~/.iac)\n"
+               "  Remote rooms re-invoke iac on the host, so it must be installed\n"
+               "  there (~/.local/bin or PATH), with key-based ssh auth — outside\n"
+               "  a terminal, BatchMode is set and password prompts cannot be\n"
+               "  answered. Remote publishes record their origin as 'host:~/dir'.\n"
+               "\n"
                "output format:\n"
                "  [14:32:07] planner (~/projects/tamber-web): deploy is green\n"
                "\n"
                "environment:\n"
                "  IAC_NAME  sender name (default: $USER)\n"
-               "  IAC_DIR   room directory (default: ~/.iac). Processes pointed\n"
-               "            at the same directory share a room; use another path\n"
-               "            for a private channel.\n"
+               "  IAC_DIR   room spec, same forms as --room (default: ~/.iac).\n"
+               "            Processes pointed at the same room share it; use\n"
+               "            another path for a private channel.\n"
                "\n"
                "examples:\n"
                "  iac publish \"starting the migration\" --from planner\n"
                "  IAC_NAME=reviewer iac monitor\n"
-               "  iac read -n 50\n",
+               "  iac read -n 50\n"
+               "  iac monitor --room jamie@tamby:\n"
+               "  IAC_DIR=jamie@tamby:.iac-team iac publish \"cross-machine hi\"\n",
                stdout);
     return 0;
 }
@@ -245,6 +382,8 @@ int help()
 int runPublish(const std::vector<std::string>& args)
 {
     auto sender = defaultSender();
+    auto cwd = currentDirectory();
+    auto cwdOverridden = false;
     auto text = std::string {};
 
     for (std::size_t i = 1; i < args.size(); ++i)
@@ -254,6 +393,12 @@ int runPublish(const std::vector<std::string>& args)
             sender = args[++i];
             continue;
         }
+        if (args[i] == "--cwd" && i + 1 < args.size())
+        {
+            cwd = args[++i];
+            cwdOverridden = true;
+            continue;
+        }
         if (!text.empty())
             text += ' ';
         text += args[i];
@@ -261,7 +406,15 @@ int runPublish(const std::vector<std::string>& args)
 
     if (text.empty())
         return usageError();
-    return publish(text, sender);
+    if (activeRoom.remote())
+    {
+        // Stamp the true origin: the remote side would otherwise record its
+        // own environment. Abbreviate here — our home is meaningless there.
+        if (!cwdOverridden)
+            cwd = shortHostname() + ":" + abbreviateHome(cwd);
+        return runOverSsh({"publish", text, "--from", sender, "--cwd", cwd});
+    }
+    return publish(text, sender, cwd);
 }
 
 int runMonitor(const std::vector<std::string>& args)
@@ -271,6 +424,14 @@ int runMonitor(const std::vector<std::string>& args)
     for (std::size_t i = 1; i < args.size(); ++i)
         if (args[i] == "--ignore-from" && i + 1 < args.size())
             monitorIgnore = args[++i];
+
+    if (activeRoom.remote())
+    {
+        auto forwarded = std::vector<std::string> {"monitor"};
+        if (!monitorIgnore.empty())
+            forwarded.insert(forwarded.end(), {"--ignore-from", monitorIgnore});
+        return runOverSsh(forwarded);
+    }
     return eacp::Apps::run<Monitor>();
 }
 
@@ -280,13 +441,33 @@ int runRead(const std::vector<std::string>& args)
     for (std::size_t i = 1; i < args.size(); ++i)
         if (args[i] == "-n" && i + 1 < args.size())
             count = std::strtoul(args[++i].c_str(), nullptr, 10);
+
+    if (activeRoom.remote())
+        return runOverSsh({"read", "-n", std::to_string(count)});
     return readLast(count);
 }
 } // namespace iac
 
 int main(int argc, char* argv[])
 {
-    const auto args = std::vector<std::string> {argv + 1, argv + argc};
+    auto args = std::vector<std::string> {argv + 1, argv + argc};
+
+    auto roomSpec = std::string {};
+    if (const auto* env = std::getenv("IAC_DIR"))
+        roomSpec = env;
+    for (auto it = args.begin(); it != args.end();)
+    {
+        if (*it == "--room" && std::next(it) != args.end())
+        {
+            roomSpec = *std::next(it);
+            it = args.erase(it, std::next(it, 2));
+            continue;
+        }
+        ++it;
+    }
+    if (!roomSpec.empty())
+        iac::activeRoom = iac::parseRoomSpec(roomSpec);
+
     if (args.empty())
         return iac::usageError();
 
