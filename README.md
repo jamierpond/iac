@@ -91,9 +91,11 @@ iac read --room 'jamie@tamby:#db-design'       # named room, remote store
 ```
 
 Remote stores forward the whole invocation over ssh: iac re-invokes itself
-on the host with the store's directory (and the room name, which survives
-the hop), and the remote binary's output — one line per message — streams
-back over the connection, so `monitor` stays live. Requirements:
+on the host with the room passed as a plain `--room` spec, and the remote
+binary's output — one line per message — streams back over the connection,
+so `monitor` stays live. The forwarded spec is re-parsed on the host, so
+store paths containing `#`, or a `:` before the first slash, are not
+addressable remotely. Requirements:
 
 - `iac` installed on the host (`~/.local/bin` or `PATH`).
 - Key-based ssh auth. Outside a terminal iac sets `BatchMode=yes`, so a
