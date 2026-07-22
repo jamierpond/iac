@@ -13,7 +13,13 @@ CPMAddPackage(
         GITHUB_REPOSITORY tamber-inc/emberstore
         GIT_TAG main)
 
-add_executable(iac Source/Main.cpp)
+if (APPLE)
+    set(platformSources Source/Platform-macOS.mm)
+elseif (WIN32)
+    set(platformSources Source/Platform-Windows.cpp)
+endif ()
+
+add_executable(iac Source/Main.cpp ${platformSources})
 target_compile_features(iac PRIVATE cxx_std_20)
 target_link_libraries(iac PRIVATE emberstore)
 

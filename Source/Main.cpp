@@ -4,6 +4,8 @@
 // Stores on other machines are reached by forwarding the whole invocation
 // over ssh to the iac there.
 
+#include "Platform.h"
+
 #include <eacp/Core/Core.h>
 #include <emberstore/Emberstore.h>
 #include <emberstore/FileWatcher.h>
@@ -21,13 +23,6 @@
 #include <random>
 #include <string>
 #include <vector>
-
-#ifdef _WIN32
-    #include <io.h>
-    #include <process.h>
-#else
-    #include <unistd.h>
-#endif
 
 namespace iac
 {
@@ -157,25 +152,10 @@ std::string abbreviateHome(const std::string& path)
 
 std::string shortHostname()
 {
-#ifdef _WIN32
-    const auto* name = std::getenv("COMPUTERNAME");
-    auto host = std::string {name != nullptr ? name : ""};
-#else
-    char name[256] = {};
-    auto host = std::string {gethostname(name, sizeof(name) - 1) == 0 ? name : ""};
-#endif
+    auto host = rawHostname();
     if (const auto dot = host.find('.'); dot != std::string::npos)
         host.resize(dot);
     return host.empty() ? "remote" : host;
-}
-
-bool stdinIsTty()
-{
-#ifdef _WIN32
-    return _isatty(_fileno(stdin)) != 0;
-#else
-    return isatty(STDIN_FILENO) != 0;
-#endif
 }
 
 std::string shellQuote(const std::string& text)
@@ -226,35 +206,12 @@ int runOverSsh(std::vector<std::string> arguments)
     ssh.push_back(activeRoom.sshTarget);
     ssh.push_back(command);
 
-    auto argv = std::vector<char*> {};
-    for (auto& argument: ssh)
-        argv.push_back(argument.data());
-    argv.push_back(nullptr);
-
-#ifdef _WIN32
-    const auto status = _spawnvp(_P_WAIT, "ssh", argv.data());
-    if (status < 0)
-    {
-        std::perror("iac: could not run ssh");
-        return 127;
-    }
-    return static_cast<int>(status);
-#else
-    execvp("ssh", argv.data());
-    std::perror("iac: could not run ssh");
-    return 127;
-#endif
+    return execute(std::move(ssh));
 }
 
 std::string formatTime(std::int64_t timestamp)
 {
-    const auto seconds = static_cast<std::time_t>(timestamp / 1000);
-    auto local = std::tm {};
-#ifdef _WIN32
-    localtime_s(&local, &seconds);
-#else
-    localtime_r(&seconds, &local);
-#endif
+    const auto local = localTime(static_cast<std::time_t>(timestamp / 1000));
     char text[16];
     std::strftime(text, sizeof(text), "%H:%M:%S", &local);
     return text;
