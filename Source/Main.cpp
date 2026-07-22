@@ -86,11 +86,18 @@ bool validRoomName(const std::string& name)
 
 Room activeRoom;
 
+// Expanding ~ here, rather than in a shell, lets a forwarded room spec carry
+// a home-relative store as a plain argument.
 eacp::FilePath roomDirectory()
 {
-    if (!activeRoom.directory.empty())
-        return activeRoom.directory;
-    return eacp::FilePath::homeDirectory() / ".iac";
+    const auto& directory = activeRoom.directory;
+    if (directory.empty())
+        return eacp::FilePath::homeDirectory() / ".iac";
+    if (directory == "~")
+        return eacp::FilePath::homeDirectory();
+    if (directory.starts_with("~/"))
+        return eacp::FilePath::homeDirectory() / directory.substr(2);
+    return directory;
 }
 
 emberstore::Database openRoom() { return emberstore::Database {roomDirectory()}; }
@@ -176,37 +183,42 @@ std::string shellQuote(const std::string& text)
 // to its own environment.
 int runOverSsh(std::vector<std::string> arguments)
 {
-    // The store travels as IAC_DIR; the room name must survive the hop too,
-    // so re-attach it as a bare '#name' spec, which composes with IAC_DIR.
-    if (!activeRoom.name.empty())
-        arguments.insert(arguments.end(), {"--room", "#" + activeRoom.name});
-
-    // A leading ~ must expand on the remote side, where quoting would
-    // defeat it — splice in "$HOME" and quote only the remainder.
-    auto command = std::string {"PATH=\"$HOME/.local/bin:$PATH\"; export PATH; "};
-    const auto& directory = activeRoom.directory;
-    if (!directory.empty())
+    // The whole room — store directory plus '#name' — travels as a plain
+    // --room argument, so the remote side needs nothing from its
+    // environment; roomDirectory() expands a leading ~ over there.
+    if (!activeRoom.directory.empty() || !activeRoom.name.empty())
     {
-        if (directory == "~")
-            command += "IAC_DIR=\"$HOME\"; ";
-        else if (directory.starts_with("~/"))
-            command += "IAC_DIR=\"$HOME\"" + shellQuote(directory.substr(1)) + "; ";
-        else
-            command += "IAC_DIR=" + shellQuote(directory) + "; ";
-        command += "export IAC_DIR; ";
+        auto spec = activeRoom.directory;
+        if (!activeRoom.name.empty())
+            spec += "#" + activeRoom.name;
+        arguments.insert(arguments.end(), {"--room", spec});
     }
-    command += "exec iac";
+
+    // iac usually lives in ~/.local/bin, which non-login remote shells
+    // don't have on PATH.
+    auto command =
+        std::string {"PATH=\"$HOME/.local/bin:$PATH\"; export PATH; exec iac"};
     for (const auto& argument: arguments)
         command += ' ' + shellQuote(argument);
 
-    auto ssh =
-        std::vector<std::string> {"ssh", "-T", "-o", "ServerAliveInterval=30"};
+    auto options = eacp::Processes::ProcessOptions {};
+    options.executable = "ssh";
+    options.arguments = {"-T", "-o", "ServerAliveInterval=30"};
     if (!stdinIsTty())
-        ssh.insert(ssh.end(), {"-o", "BatchMode=yes"});
-    ssh.push_back(activeRoom.sshTarget);
-    ssh.push_back(command);
+        options.arguments.add({"-o", "BatchMode=yes"});
+    options.arguments.push_back(activeRoom.sshTarget);
+    options.arguments.push_back(command);
 
-    return execute(std::move(ssh));
+    // Inherited stdio keeps a remote 'monitor' streaming line by line.
+    options.captureOutput = false;
+
+    const auto result = eacp::Processes::run(std::move(options));
+    if (!result.launched)
+    {
+        std::fprintf(stderr, "iac: could not run ssh\n");
+        return 127;
+    }
+    return result.exitCode;
 }
 
 std::string formatTime(std::int64_t timestamp)
