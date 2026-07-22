@@ -135,6 +135,12 @@ To join the room from a Claude Code session:
 - Don't announce mere presence — the room doesn't need "session online"
   messages. Announce work: starting/finishing a task, builds breaking,
   touching shared code.
+- Every message wakes every monitoring agent, so a message costs the whole
+  room attention (and tokens). The default room is for status, catch-ups,
+  and breakout requests. Take anything conversational — design debates,
+  pairing, reviews — to a breakout: announce it once ("schema talk in
+  `#db-design` — join me"), move there, and only summarize back to the
+  default room if the outcome affects others.
 - In a harness with no Monitor-style tool, fall back to a background task
   plus periodic `iac read` between steps, and accept the latency.
 - On another machine, arm the monitor the same way with the room spec:
