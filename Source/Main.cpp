@@ -1,12 +1,15 @@
 // iac — inter-agent chat. A tiny local chatroom backed by emberstore: every
-// message is a document in one shared collection, so any process on the
-// machine can publish, read, or stream it. Rooms on other machines are
-// reached by forwarding the whole invocation over ssh to the iac there.
+// message is a document in a shared collection — one collection file per
+// room — so any process on the machine can publish, read, or stream it.
+// Stores on other machines are reached by forwarding the whole invocation
+// over ssh to the iac there.
 
 #include <eacp/Core/Core.h>
 #include <emberstore/Emberstore.h>
 #include <emberstore/FileWatcher.h>
 
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -40,24 +43,50 @@ struct Message
 
 using Messages = std::map<std::string, Message>;
 
-// A room is normally a local emberstore directory, but an scp-style spec
-// ("[user@]host:dir") names one on another machine, reached over ssh.
+// Messages live in a store — normally a local emberstore directory, but an
+// scp-style spec ("[user@]host:dir") names one on another machine, reached
+// over ssh. Within a store, a '#name' suffix picks a named room: one document
+// file per room, so agents that join a breakout see it and no one else does.
 struct Room
 {
     std::string sshTarget;
     std::string directory;
+    std::string name;
 
     bool remote() const { return !sshTarget.empty(); }
 };
 
-// scp's rule: a colon before the first slash splits host from path. An empty
-// path ("host:") means the remote default room.
+// scp's rule on the store part: a colon before the first slash splits host
+// from path. An empty path ("host:") means the remote default store. The
+// first '#' starts the room name — store directories containing '#' need
+// IAC_DIR instead.
 Room parseRoomSpec(const std::string& spec)
 {
-    const auto colon = spec.find(':');
-    if (colon != std::string::npos && colon > 0 && spec.find('/') > colon)
-        return {spec.substr(0, colon), spec.substr(colon + 1)};
-    return {{}, spec};
+    auto store = spec;
+    auto name = std::string {};
+    if (const auto hash = spec.find('#'); hash != std::string::npos)
+    {
+        store = spec.substr(0, hash);
+        name = spec.substr(hash + 1);
+    }
+    const auto colon = store.find(':');
+    if (colon != std::string::npos && colon > 0 && store.find('/') > colon)
+        return {store.substr(0, colon), store.substr(colon + 1), name};
+    return {{}, store, name};
+}
+
+// Room names appear in file names and forwarded shell commands, so keep them
+// to characters safe in both.
+bool validRoomName(const std::string& name)
+{
+    return !name.empty()
+           && std::all_of(name.begin(),
+                          name.end(),
+                          [](unsigned char c)
+                          {
+                              return std::islower(c) != 0 || std::isdigit(c) != 0
+                                     || c == '-' || c == '_';
+                          });
 }
 
 Room activeRoom;
@@ -70,6 +99,15 @@ eacp::FilePath roomDirectory()
 }
 
 emberstore::Database openRoom() { return emberstore::Database {roomDirectory()}; }
+
+// The default room keeps the historical "messages" document, so existing
+// stores need no migration; named rooms get their own file alongside it.
+std::string roomDocumentName()
+{
+    if (activeRoom.name.empty())
+        return "messages";
+    return "room-" + activeRoom.name;
+}
 
 std::string defaultSender()
 {
@@ -156,8 +194,13 @@ std::string shellQuote(const std::string& text)
 // connection, so even 'monitor' stays live. Callers resolve sender names and
 // directories locally before forwarding — the remote side must not fall back
 // to its own environment.
-int runOverSsh(const std::vector<std::string>& arguments)
+int runOverSsh(std::vector<std::string> arguments)
 {
+    // The store travels as IAC_DIR; the room name must survive the hop too,
+    // so re-attach it as a bare '#name' spec, which composes with IAC_DIR.
+    if (!activeRoom.name.empty())
+        arguments.insert(arguments.end(), {"--room", "#" + activeRoom.name});
+
     // A leading ~ must expand on the remote side, where quoting would
     // defeat it — splice in "$HOME" and quote only the remainder.
     auto command = std::string {"PATH=\"$HOME/.local/bin:$PATH\"; export PATH; "};
@@ -234,7 +277,7 @@ int publish(const std::string& text,
             const std::string& sender,
             const std::string& cwd)
 {
-    auto messages = openRoom().collection<Message>("messages");
+    auto messages = openRoom().collection<Message>(roomDocumentName());
     const auto message = Message {sender, text, cwd, nowMs()};
 
     if (!messages.doc(makeKey(message.timestamp)).set(message))
@@ -248,7 +291,7 @@ int publish(const std::string& text,
 
 int readLast(std::size_t count)
 {
-    auto document = openRoom().document<Messages>("messages");
+    auto document = openRoom().document<Messages>(roomDocumentName());
     const auto& all = document.peek();
 
     auto skip = all.size() > count ? all.size() - count : std::size_t {0};
@@ -261,6 +304,39 @@ int readLast(std::size_t count)
         }
         printMessage(message);
     }
+    return 0;
+}
+
+// A room is one document file in the store, so listing rooms is listing
+// files: "messages.json" is the default room, "room-<name>.json" the rest.
+int listRooms()
+{
+    const auto root = std::filesystem::path {roomDirectory().str()};
+    auto error = std::error_code {};
+    auto names = std::vector<std::string> {};
+    auto haveDefault = false;
+    for (const auto& entry: std::filesystem::directory_iterator {root, error})
+    {
+        const auto file = entry.path().filename().string();
+        if (!file.ends_with(".json"))
+            continue;
+        const auto stem = file.substr(0, file.size() - 5);
+        if (stem == "messages")
+            haveDefault = true;
+        else if (stem.starts_with("room-"))
+            names.push_back(stem.substr(5));
+    }
+    if (error)
+    {
+        std::fprintf(stderr, "iac: could not list %s\n", roomDirectory().c_str());
+        return 1;
+    }
+
+    std::sort(names.begin(), names.end());
+    if (haveDefault)
+        std::printf("(default)\n");
+    for (const auto& name: names)
+        std::printf("#%s\n", name.c_str());
     return 0;
 }
 
@@ -295,7 +371,7 @@ struct Monitor
     }
 
     emberstore::Document<Messages> document =
-        openRoom().document<Messages>("messages");
+        openRoom().document<Messages>(roomDocumentName());
     std::string lastKey;
     emberstore::FileWatcher watcher {document.filePath(),
                                      [this] { printNewMessages(); }};
@@ -306,8 +382,9 @@ constexpr auto usageText =
     "  iac publish <message...> [--from <name>]\n"
     "  iac monitor [--ignore-from <name>]\n"
     "  iac read [-n <count>]\n"
+    "  iac rooms\n"
     "\n"
-    "  every command also takes --room <dir | [user@]host:dir>\n";
+    "  every command also takes --room <[dir | [user@]host:dir][#name]>\n";
 
 int usageError()
 {
@@ -326,56 +403,69 @@ int help()
                "\n",
                stdout);
     std::fputs(usageText, stdout);
-    std::fputs("\n"
-               "commands:\n"
-               "  publish   Post a message to the room. All non-flag arguments are\n"
-               "            joined into one message, so quoting is optional. The\n"
-               "            working directory is recorded with the message, so\n"
-               "            readers can see which project the sender was in.\n"
-               "              --from <name>   sender name for this message only\n"
-               "                              (otherwise IAC_NAME, then $USER)\n"
-               "              --cwd <label>   override the recorded directory\n"
-               "  monitor   Stream messages as they arrive, one line each. Prints\n"
-               "            only messages published after it starts — use 'read'\n"
-               "            to catch up on history. Runs until interrupted.\n"
-               "            Your own messages are suppressed: anything published\n"
-               "            by IAC_NAME (or --ignore-from <name>) is skipped, so\n"
-               "            a session is never woken by its own publishes.\n"
-               "            Agents: run this under an event-driven watcher that\n"
-               "            raises a notification per stdout line (e.g. Claude\n"
-               "            Code's Monitor tool, persistent). A plain background\n"
-               "            task only notifies on process exit — which never\n"
-               "            comes — so messages pile up unread unless polled.\n"
-               "  read      Print the last <count> messages, oldest first.\n"
-               "              -n <count>      how many to print (default 20)\n"
-               "\n"
-               "rooms:\n"
-               "  A room is an emberstore directory (default ~/.iac). --room, or\n"
-               "  the IAC_DIR environment variable, points a command elsewhere:\n"
-               "    --room /some/dir          another room on this machine\n"
-               "    --room [user@]host:dir    a room on another machine, over ssh\n"
-               "    --room user@host:         that machine's default room (~/.iac)\n"
-               "  Remote rooms re-invoke iac on the host, so it must be installed\n"
-               "  there (~/.local/bin or PATH), with key-based ssh auth — outside\n"
-               "  a terminal, BatchMode is set and password prompts cannot be\n"
-               "  answered. Remote publishes record their origin as 'host:~/dir'.\n"
-               "\n"
-               "output format:\n"
-               "  [14:32:07] planner (~/projects/tamber-web): deploy is green\n"
-               "\n"
-               "environment:\n"
-               "  IAC_NAME  sender name (default: $USER)\n"
-               "  IAC_DIR   room spec, same forms as --room (default: ~/.iac).\n"
-               "            Processes pointed at the same room share it; use\n"
-               "            another path for a private channel.\n"
-               "\n"
-               "examples:\n"
-               "  iac publish \"starting the migration\" --from planner\n"
-               "  IAC_NAME=reviewer iac monitor\n"
-               "  iac read -n 50\n"
-               "  iac monitor --room jamie@tamby:\n"
-               "  IAC_DIR=jamie@tamby:.iac-team iac publish \"cross-machine hi\"\n",
-               stdout);
+    std::fputs(
+        "\n"
+        "commands:\n"
+        "  publish   Post a message to the room. All non-flag arguments are\n"
+        "            joined into one message, so quoting is optional. The\n"
+        "            working directory is recorded with the message, so\n"
+        "            readers can see which project the sender was in.\n"
+        "              --from <name>   sender name for this message only\n"
+        "                              (otherwise IAC_NAME, then $USER)\n"
+        "              --cwd <label>   override the recorded directory\n"
+        "  monitor   Stream messages as they arrive, one line each. Prints\n"
+        "            only messages published after it starts — use 'read'\n"
+        "            to catch up on history. Runs until interrupted.\n"
+        "            Your own messages are suppressed: anything published\n"
+        "            by IAC_NAME (or --ignore-from <name>) is skipped, so\n"
+        "            a session is never woken by its own publishes.\n"
+        "            Agents: run this under an event-driven watcher that\n"
+        "            raises a notification per stdout line (e.g. Claude\n"
+        "            Code's Monitor tool, persistent). A plain background\n"
+        "            task only notifies on process exit — which never\n"
+        "            comes — so messages pile up unread unless polled.\n"
+        "  read      Print the last <count> messages, oldest first.\n"
+        "              -n <count>      how many to print (default 20)\n"
+        "  rooms     List the store's rooms, default room first.\n"
+        "\n"
+        "rooms:\n"
+        "  Messages live in a store — an emberstore directory (default\n"
+        "  ~/.iac) — and, within it, in rooms: one document file per\n"
+        "  room, with unnamed messages in the default room. --room, or\n"
+        "  the IAC_DIR environment variable, picks both:\n"
+        "    --room /some/dir          another store on this machine\n"
+        "    --room [user@]host:dir    a store on another machine, over ssh\n"
+        "    --room user@host:         that machine's default store (~/.iac)\n"
+        "    --room '#design'          the 'design' room in the usual store\n"
+        "    --room user@host:#design  a named room on another machine\n"
+        "  A bare '#name' composes with IAC_DIR: keep the store in the\n"
+        "  environment, hop rooms per command. Names are [a-z0-9-_];\n"
+        "  store paths containing '#' need IAC_DIR. Breakout rooms are\n"
+        "  just names — agents that publish or monitor '#name' see it,\n"
+        "  everyone else doesn't. No room is created until someone\n"
+        "  publishes into it.\n"
+        "  Remote stores re-invoke iac on the host, so it must be installed\n"
+        "  there (~/.local/bin or PATH), with key-based ssh auth — outside\n"
+        "  a terminal, BatchMode is set and password prompts cannot be\n"
+        "  answered. Remote publishes record their origin as 'host:~/dir'.\n"
+        "\n"
+        "output format:\n"
+        "  [14:32:07] planner (~/projects/tamber-web): deploy is green\n"
+        "\n"
+        "environment:\n"
+        "  IAC_NAME  sender name (default: $USER)\n"
+        "  IAC_DIR   room spec, same forms as --room (default: ~/.iac).\n"
+        "            Processes pointed at the same room share it; use\n"
+        "            another room for a private channel.\n"
+        "\n"
+        "examples:\n"
+        "  iac publish \"starting the migration\" --from planner\n"
+        "  IAC_NAME=reviewer iac monitor\n"
+        "  iac read -n 50\n"
+        "  iac monitor --room jamie@tamby:\n"
+        "  iac publish \"schema thoughts?\" --room '#db-design'\n"
+        "  IAC_DIR=jamie@tamby: iac monitor --room '#db-design'\n",
+        stdout);
     return 0;
 }
 
@@ -435,6 +525,13 @@ int runMonitor(const std::vector<std::string>& args)
     return eacp::Apps::run<Monitor>();
 }
 
+int runRooms()
+{
+    if (activeRoom.remote())
+        return runOverSsh({"rooms"});
+    return listRooms();
+}
+
 int runRead(const std::vector<std::string>& args)
 {
     auto count = std::size_t {20};
@@ -455,18 +552,32 @@ int main(int argc, char* argv[])
     auto roomSpec = std::string {};
     if (const auto* env = std::getenv("IAC_DIR"))
         roomSpec = env;
+    if (!roomSpec.empty())
+        iac::activeRoom = iac::parseRoomSpec(roomSpec);
     for (auto it = args.begin(); it != args.end();)
     {
         if (*it == "--room" && std::next(it) != args.end())
         {
-            roomSpec = *std::next(it);
+            // A bare '#name' picks a room within the store IAC_DIR already
+            // names, so agents keep the store in the environment and hop
+            // rooms per command; anything else is a full spec.
+            const auto& spec = *std::next(it);
+            if (spec.starts_with('#'))
+                iac::activeRoom.name = spec.substr(1);
+            else
+                iac::activeRoom = iac::parseRoomSpec(spec);
             it = args.erase(it, std::next(it, 2));
             continue;
         }
         ++it;
     }
-    if (!roomSpec.empty())
-        iac::activeRoom = iac::parseRoomSpec(roomSpec);
+    if (!iac::activeRoom.name.empty() && !iac::validRoomName(iac::activeRoom.name))
+    {
+        std::fprintf(stderr,
+                     "iac: invalid room name '%s' (a-z, 0-9, '-', '_')\n",
+                     iac::activeRoom.name.c_str());
+        return 2;
+    }
 
     if (args.empty())
         return iac::usageError();
@@ -479,6 +590,8 @@ int main(int argc, char* argv[])
         return iac::runRead(args);
     if (command == "monitor")
         return iac::runMonitor(args);
+    if (command == "rooms")
+        return iac::runRooms();
     if (command == "help" || command == "--help" || command == "-h")
         return iac::help();
 

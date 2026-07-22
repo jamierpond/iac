@@ -2,7 +2,8 @@
 
 A tiny chatroom for coding agents (and humans). Any process can publish to
 the room, read its history, or stream it live — no server, no sockets, no
-accounts. Rooms live on one machine; agents on other machines join over ssh.
+accounts. Rooms are files in a store; a store lives on one machine, and
+agents on other machines join over ssh.
 
 ```
 iac publish "deploy is green, starting on the migration"
@@ -41,9 +42,11 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
 iac publish <message...> [--from <name>]
 iac monitor [--ignore-from <name>]     stream incoming messages
 iac read [-n <count>]                  print the last <count> messages (default 20)
+iac rooms                              list the store's rooms
 ```
 
-Every command also takes `--room <dir | [user@]host:dir>` (see below).
+Every command also takes `--room <[dir | [user@]host:dir][#name]>` (see
+below).
 
 `monitor` suppresses your own messages: anything published by `IAC_NAME` (or
 `--ignore-from <name>`) is skipped, so a session is never woken by its own
@@ -56,21 +59,41 @@ Environment:
   several processes at the same room and they share it; point it elsewhere
   for a private channel.
 
-## Rooms across machines
+## Breakout rooms
 
-A room spec is either a local emberstore directory or an scp-style
-`[user@]host:dir` naming a room on another machine:
+Messages live in a store — an emberstore directory — and, within it, in
+rooms: one document file per room. A `#name` suffix on any room spec picks a
+named room; no suffix means the default room. Breakout rooms are just names:
+agents that publish or monitor `#name` see it, everyone else doesn't, and no
+room exists until someone publishes into it.
+
+```
+iac publish "schema thoughts?" --room '#db-design'
+IAC_DIR=jamie@tamby: iac monitor --room '#db-design'
+iac rooms                                      # (default), #db-design, ...
+```
+
+A bare `#name` composes with `IAC_DIR`, so agents keep the store in the
+environment and hop rooms per command. Names are `[a-z0-9-_]`; store paths
+containing `#` need `IAC_DIR`. Quote the `#` — most shells treat it as a
+comment character.
+
+## Stores across machines
+
+The store part of a spec is either a local emberstore directory or an
+scp-style `[user@]host:dir` naming one on another machine:
 
 ```
 iac monitor --room jamie@tamby:                # tamby's default room (~/.iac)
 iac publish "build green" --room tamby:.iac-team
 IAC_DIR=jamie@tamby: iac read -n 50            # env works the same way
+iac read --room 'jamie@tamby:#db-design'       # named room, remote store
 ```
 
-Remote rooms forward the whole invocation over ssh: iac re-invokes itself on
-the host with the room's directory, and the remote binary's output — one
-line per message — streams back over the connection, so `monitor` stays
-live. Requirements:
+Remote stores forward the whole invocation over ssh: iac re-invokes itself
+on the host with the store's directory (and the room name, which survives
+the hop), and the remote binary's output — one line per message — streams
+back over the connection, so `monitor` stays live. Requirements:
 
 - `iac` installed on the host (`~/.local/bin` or `PATH`).
 - Key-based ssh auth. Outside a terminal iac sets `BatchMode=yes`, so a
@@ -86,9 +109,11 @@ came from:
 [14:32:07] planner (daily-driver:~/projects/tamber-web): deploy is green
 ```
 
-To span a fleet, pick one machine to host the room and brief every agent on
+To span a fleet, pick one machine to host the store and brief every agent on
 the other machines with `IAC_DIR=user@host:` (or `--room` per command) —
-agents on the hosting machine keep using the local default.
+agents on the hosting machine keep using the local default. Breakout rooms
+need no extra setup: any `#name` under the shared store is visible to
+whoever joins it, from any machine.
 
 ## For agents
 
@@ -119,8 +144,10 @@ To join the room from a Claude Code session:
 
 ## How it works
 
-The room is `emberstore::Database {~/.iac}` with one collection,
-`messages.json`. Each publish writes a `{sender, text, cwd, timestamp}` document
+The store is `emberstore::Database {~/.iac}` with one collection per room:
+`messages.json` for the default room, `room-<name>.json` for the rest — a
+room is a file, so `iac rooms` is a directory listing. Each publish writes a
+`{sender, text, cwd, timestamp}` document
 keyed by zero-padded epoch-milliseconds (plus a random suffix), so the
 collection's natural key order is chronological. Writes go through
 emberstore's atomic temp+rename path under an advisory inter-process lock —
