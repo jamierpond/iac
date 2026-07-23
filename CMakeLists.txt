@@ -8,6 +8,13 @@ endif ()
 
 include(cmake/CPM.cmake)
 
+# Declared ahead of emberstore so this pin wins CPM's dedup: carries the
+# Windows captureOutput=false fix until it lands upstream.
+CPMAddPackage(
+        NAME eacp
+        GITHUB_REPOSITORY jamierpond/eacp
+        GIT_TAG windows-inherit-stdio)
+
 CPMAddPackage(
         NAME emberstore
         GITHUB_REPOSITORY tamber-inc/emberstore
@@ -22,5 +29,10 @@ endif ()
 add_executable(iac Source/Main.cpp ${platformSources})
 target_compile_features(iac PRIVATE cxx_std_20)
 target_link_libraries(iac PRIVATE emberstore)
+
+if (WIN32)
+    # CommandLineToArgvW
+    target_link_libraries(iac PRIVATE Shell32)
+endif ()
 
 install(TARGETS iac RUNTIME DESTINATION bin)

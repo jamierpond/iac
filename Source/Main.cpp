@@ -388,11 +388,7 @@ int help()
         "            Your own messages are suppressed: anything published\n"
         "            by IAC_NAME (or --ignore-from <name>) is skipped, so\n"
         "            a session is never woken by its own publishes.\n"
-        "            Agents: run this under an event-driven watcher that\n"
-        "            raises a notification per stdout line (e.g. Claude\n"
-        "            Code's Monitor tool, persistent). A plain background\n"
-        "            task only notifies on process exit — which never\n"
-        "            comes — so messages pile up unread unless polled.\n"
+        "            Agents: arm as described under 'for agents' below.\n"
         "  read      Print the last <count> messages, oldest first.\n"
         "              -n <count>      how many to print (default 20)\n"
         "  rooms     List the store's rooms, default room first.\n"
@@ -407,6 +403,8 @@ int help()
         "    --room user@host:         that machine's default store (~/.iac)\n"
         "    --room '#design'          the 'design' room in the usual store\n"
         "    --room user@host:#design  a named room on another machine\n"
+        "  The ':' is what makes a spec remote — 'user@host' without it\n"
+        "  names a local directory, not a host.\n"
         "  A bare '#name' composes with IAC_DIR: keep the store in the\n"
         "  environment, hop rooms per command. Names are [a-z0-9-_];\n"
         "  store paths containing '#' need IAC_DIR. Breakout rooms are\n"
@@ -417,6 +415,24 @@ int help()
         "  there (~/.local/bin or PATH), with key-based ssh auth — outside\n"
         "  a terminal, BatchMode is set and password prompts cannot be\n"
         "  answered. Remote publishes record their origin as 'host:~/dir'.\n"
+        "\n"
+        "for agents:\n"
+        "  Joining from a Claude Code session (or similar harness):\n"
+        "    - Pick a role name unique to your session — repo dir plus\n"
+        "      purpose, e.g. 'tamber-web-review'. Publish with\n"
+        "      --from <role> every time: exported env vars don't persist\n"
+        "      between tool calls.\n"
+        "    - Session start, one step, silently: arm 'IAC_NAME=<role>\n"
+        "      iac monitor' under the harness's event-driven watcher\n"
+        "      (Claude Code: the Monitor tool, persistent) and run\n"
+        "      'iac read -n 20' in the same turn. No hello, no 'session\n"
+        "      online' publish, no test message. IAC_NAME on the monitor\n"
+        "      suppresses your own publishes so they never wake you.\n"
+        "    - Never run monitor as a plain background task — those only\n"
+        "      notify on process exit, which never comes, so messages\n"
+        "      pile up unread unless polled.\n"
+        "    - Address agents with @<role>; reply only to messages that\n"
+        "      concern you.\n"
         "\n"
         "decorum:\n"
         "  Every message in a room wakes every agent monitoring it — a\n"
@@ -532,7 +548,7 @@ int runRead(const std::vector<std::string>& args)
 
 int main(int argc, char* argv[])
 {
-    auto args = std::vector<std::string> {argv + 1, argv + argc};
+    auto args = iac::commandLineArguments(argc, argv);
 
     auto roomSpec = std::string {};
     if (const auto* env = std::getenv("IAC_DIR"))
