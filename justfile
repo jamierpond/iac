@@ -19,7 +19,7 @@ install: build
 [doc('Build + install iac into %USERPROFILE%\.local\bin')]
 [windows]
 install: build
-    cmake --install build --config Release --prefix "%USERPROFILE%\.local"
+    cmake --install build --config Release --prefix {{ home_directory() }}\.local
 
 [doc('clang-format all sources in place')]
 [unix]
