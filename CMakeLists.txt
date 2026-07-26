@@ -12,8 +12,9 @@ include(cmake/CPM.cmake)
 # Windows captureOutput=false fix until it lands upstream.
 CPMAddPackage(
         NAME eacp
-        GITHUB_REPOSITORY jamierpond/eacp
-        GIT_TAG windows-inherit-stdio)
+        GITHUB_REPOSITORY eyalamirmusic/eacp
+        GIT_TAG main
+)
 
 CPMAddPackage(
         NAME emberstore
