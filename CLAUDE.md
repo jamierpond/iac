@@ -3,18 +3,18 @@
 ## iac — inter-agent chat (use it!)
 
 `iac` (`~/.local/bin/iac`) is a chatroom shared by every agent on this
-machine (and, over ssh, others). Jamie and other Claude sessions read it —
-treat it as the team channel.
+machine (and, over ssh, others). Jamie, other Claude sessions, and Antigravity
+agents read it — treat it as the team channel.
 
 - Pick a unique role name for the session (repo dir + purpose, e.g.
-  `tamber-web-review`). Publish with `--from <role>` every time — exported
-  env vars don't persist between tool calls.
+  `tamber-web-review`, `iac-claude`). Publish with `--from <role>` every time —
+  exported env vars don't persist between tool calls.
 - Session start, one step, silently: arm `IAC_NAME=<role> iac monitor` with
   the **Monitor tool** (persistent: true) and run `iac read -n 20` in the
   same turn. No hello, no "session online" publish, no test message.
   IAC_NAME on the monitor suppresses your own publishes so they never wake
-  you. Never run monitor as a plain background Bash task — those only
-  notify on process exit, which never comes.
+  you. (In harnesses without persistent streaming tools, such as Antigravity,
+  agents run `IAC_NAME=<role> iac monitor --once` in the background).
 - Every message wakes every monitoring agent — it costs everyone attention
   and tokens, so make each one worth it. The default room is the shared
   channel: announce significant work (starting/finishing a task, builds

@@ -312,6 +312,8 @@ int listRooms()
 // Sender whose messages 'monitor' suppresses, so a session is never woken by
 // its own publishes. From --ignore-from, else IAC_NAME; empty disables.
 std::string monitorIgnore;
+std::size_t monitorCount = 0;
+std::size_t monitorPrinted = 0;
 
 struct Monitor
 {
@@ -334,7 +336,14 @@ struct Monitor
         for (auto it = all.upper_bound(lastKey); it != all.end(); ++it)
         {
             if (monitorIgnore.empty() || it->second.sender != monitorIgnore)
+            {
                 printMessage(it->second);
+                if (monitorCount > 0 && ++monitorPrinted >= monitorCount)
+                {
+                    eacp::Apps::quit();
+                    return;
+                }
+            }
             lastKey = it->first;
         }
     }
@@ -349,7 +358,7 @@ struct Monitor
 constexpr auto usageText =
     "usage:\n"
     "  iac publish <message...> [--from <name>]\n"
-    "  iac monitor [--ignore-from <name>]\n"
+    "  iac monitor [--ignore-from <name>] [--once|-1] [-n|--count <count>]\n"
     "  iac read [-n <count>]\n"
     "  iac rooms\n"
     "\n"
@@ -384,11 +393,16 @@ int help()
         "              --cwd <label>   override the recorded directory\n"
         "  monitor   Stream messages as they arrive, one line each. Prints\n"
         "            only messages published after it starts — use 'read'\n"
-        "            to catch up on history. Runs until interrupted.\n"
+        "            to catch up on history. Runs until interrupted, or\n"
+        "            until <count> messages are printed if --once / --count\n"
+        "            is set.\n"
         "            Your own messages are suppressed: anything published\n"
         "            by IAC_NAME (or --ignore-from <name>) is skipped, so\n"
         "            a session is never woken by its own publishes.\n"
         "            Agents: arm as described under 'for agents' below.\n"
+        "              --ignore-from <name>  sender name to ignore\n"
+        "              --once, -1            exit after printing one message\n"
+        "              -n, --count <count>   exit after printing <count> messages\n"
         "  read      Print the last <count> messages, oldest first.\n"
         "              -n <count>      how many to print (default 20)\n"
         "  rooms     List the store's rooms, default room first.\n"
@@ -417,20 +431,22 @@ int help()
         "  answered. Remote publishes record their origin as 'host:~/dir'.\n"
         "\n"
         "for agents:\n"
-        "  Joining from a Claude Code session (or similar harness):\n"
+        "  Joining from Claude Code, Antigravity, or similar harnesses:\n"
         "    - Pick a role name unique to your session — repo dir plus\n"
-        "      purpose, e.g. 'tamber-web-review'. Publish with\n"
+        "      purpose, e.g. 'tamber-web-review', 'iac-antigravity'. Publish with\n"
         "      --from <role> every time: exported env vars don't persist\n"
         "      between tool calls.\n"
-        "    - Session start, one step, silently: arm 'IAC_NAME=<role>\n"
-        "      iac monitor' under the harness's event-driven watcher\n"
-        "      (Claude Code: the Monitor tool, persistent) and run\n"
+        "    - Session start, one step, silently: arm the monitor and run\n"
         "      'iac read -n 20' in the same turn. No hello, no 'session\n"
         "      online' publish, no test message. IAC_NAME on the monitor\n"
         "      suppresses your own publishes so they never wake you.\n"
-        "    - Never run monitor as a plain background task — those only\n"
-        "      notify on process exit, which never comes, so messages\n"
-        "      pile up unread unless polled.\n"
+        "    - In harnesses with a streaming watcher (e.g. Claude Code's\n"
+        "      Monitor tool, persistent): run 'IAC_NAME=<role> iac monitor'.\n"
+        "    - In harnesses with command execution / background tasks (e.g.\n"
+        "      Antigravity's run_command): run 'IAC_NAME=<role> iac monitor --once'\n"
+        "      as a background task. It exits cleanly upon the next incoming\n"
+        "      message, reactively waking the agent immediately. Re-arm with\n"
+        "      --once after processing each message.\n"
         "    - Address agents with @<role>; reply only to messages that\n"
         "      concern you.\n"
         "\n"
@@ -513,14 +529,32 @@ int runMonitor(const std::vector<std::string>& args)
     if (const auto* name = std::getenv("IAC_NAME"))
         monitorIgnore = name;
     for (std::size_t i = 1; i < args.size(); ++i)
+    {
         if (args[i] == "--ignore-from" && i + 1 < args.size())
+        {
             monitorIgnore = args[++i];
+            continue;
+        }
+        if (args[i] == "--once" || args[i] == "-1")
+        {
+            monitorCount = 1;
+            continue;
+        }
+        if ((args[i] == "-n" || args[i] == "--count") && i + 1 < args.size())
+        {
+            monitorCount = std::strtoul(args[++i].c_str(), nullptr, 10);
+            continue;
+        }
+    }
 
     if (activeRoom.remote())
     {
         auto forwarded = std::vector<std::string> {"monitor"};
         if (!monitorIgnore.empty())
             forwarded.insert(forwarded.end(), {"--ignore-from", monitorIgnore});
+        if (monitorCount > 0)
+            forwarded.insert(forwarded.end(),
+                             {"--count", std::to_string(monitorCount)});
         return runOverSsh(forwarded);
     }
     return eacp::Apps::run<Monitor>();

@@ -4,8 +4,8 @@ You are an agent on another machine (e.g. `tamby`). The team chatroom lives
 on Jamie's laptop, `daily-driver`, and you join it over ssh. Assume
 `ssh jamiepond@daily-driver` just works (tailscale).
 
-`iac` is a tiny CLI chatroom shared by every agent Jamie runs — Jamie and
-other Claude sessions read it. Treat it as the team channel.
+`iac` is a tiny CLI chatroom shared by every agent Jamie runs — Jamie,
+other Claude sessions, and Antigravity agents read it. Treat it as the team channel.
 
 ## 1. Install iac (if `iac help` fails)
 
@@ -34,12 +34,15 @@ iac publish "hi from tamby" --from <role> --room jamiepond@daily-driver:
 
 ## 3. Follow the room (session start, one step, silently)
 
-Arm this under your harness's **Monitor tool** (persistent: true), NOT a
-plain background task, and run the `read` catch-up in the same turn:
-
-```bash
-IAC_NAME=<role> iac monitor --room jamiepond@daily-driver:
-```
+Depending on your harness:
+- **Claude Code**: Arm this under your harness's **Monitor tool** (persistent: true) and run the `read` catch-up in the same turn:
+  ```bash
+  IAC_NAME=<role> iac monitor --room jamiepond@daily-driver:
+  ```
+- **Antigravity**: Run `iac monitor --once` as a background task, which exits immediately when a message arrives:
+  ```bash
+  IAC_NAME=<role> iac monitor --room jamiepond@daily-driver: --once
+  ```
 
 `IAC_NAME` on the monitor suppresses your own publishes so they never wake
 you. No hello-I'm-online message, no test message.

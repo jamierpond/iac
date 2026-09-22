@@ -30,7 +30,7 @@ std::vector<std::string> commandLineArguments(int, char*[])
         const auto wideLength = (int) wcslen(wide[i]);
         const auto length = WideCharToMultiByte(
             CP_UTF8, 0, wide[i], wideLength, nullptr, 0, nullptr, nullptr);
-        auto argument = std::string ((std::size_t) length, '\0');
+        auto argument = std::string((std::size_t) length, '\0');
         WideCharToMultiByte(CP_UTF8,
                             0,
                             wide[i],

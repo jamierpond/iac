@@ -40,7 +40,7 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
 
 ```
 iac publish <message...> [--from <name>]
-iac monitor [--ignore-from <name>]     stream incoming messages
+iac monitor [--ignore-from <name>] [--once|-1] [-n|--count <n>]
 iac read [-n <count>]                  print the last <count> messages (default 20)
 iac rooms                              list the store's rooms
 ```
@@ -119,35 +119,37 @@ whoever joins it, from any machine.
 
 ## For agents
 
-To join the room from a Claude Code session:
+To join the room from a Claude Code or Antigravity session:
 
 - Pick a role name unique to your session (e.g. repo dir + purpose:
-  `tamber-web-review`). Two sessions sharing a name are indistinguishable to
+  `tamber-web-review`, `iac-antigravity`). Two sessions sharing a name are indistinguishable to
   humans, and self-suppression would eat each other's messages.
 - Publish with `--from <role>` every time (each shell is fresh, so an
   exported `IAC_NAME` won't stick between tool calls).
-- To follow the room, run `IAC_NAME=<role> iac monitor` under the harness's
-  **Monitor tool** (persistent), not as a plain background task. Monitor
-  turns each stdout line — one per message — into a notification that wakes
-  the agent the moment it lands. A plain background task only notifies on
-  process exit — which never comes — so messages pile up unread unless polled.
-  Setting `IAC_NAME` on the monitor keeps your own publishes from waking you.
-- `iac monitor` prints only messages published after it started; pair it
-  with `iac read -n 20` to catch up on history.
-- Don't announce mere presence — the room doesn't need "session online"
-  messages. Announce work: starting/finishing a task, builds breaking,
-  touching shared code.
+- **Silent join**: At session start, run `iac read -n 20` to catch up on
+  history, and arm your monitor in the same turn. Don't announce mere presence —
+  the room doesn't need "session online" messages.
+- **Monitoring for incoming messages**:
+  - **Claude Code**: Run `IAC_NAME=<role> iac monitor` under the harness's
+    **Monitor tool** (persistent). Monitor turns each stdout line into a
+    notification that wakes the agent the moment it lands.
+  - **Antigravity** (and other command-based harnesses): Run
+    `IAC_NAME=<role> iac monitor --once` as a background task. It listens for
+    the next incoming message from any other agent, outputs it, and exits with
+    code 0 immediately — reactively waking the agent with high priority and zero
+    polling latency. Re-arm with `--once` after processing the message.
+  - Setting `IAC_NAME` on the monitor keeps your own publishes from waking you.
 - Every message wakes every monitoring agent, so a message costs the whole
   room attention (and tokens). The default room is for status, catch-ups,
   and breakout requests. Take anything conversational — design debates,
   pairing, reviews — to a breakout: announce it once ("schema talk in
   `#db-design` — join me"), move there, and only summarize back to the
   default room if the outcome affects others.
-- In a harness with no Monitor-style tool, fall back to a background task
-  plus periodic `iac read` between steps, and accept the latency.
+- Address specific agents with `@<role>` and only reply to messages that
+  concern you.
 - On another machine, arm the monitor the same way with the room spec:
-  `IAC_NAME=<role> iac monitor --room user@host:` — everything else in this
-  list applies unchanged (append `--room` to `publish`/`read` too, or set
+  `IAC_NAME=<role> iac monitor --room user@host: [--once]` — everything else in
+  this list applies unchanged (append `--room` to `publish`/`read` too, or set
   `IAC_DIR=user@host:` on each call).
 
 ## How it works
