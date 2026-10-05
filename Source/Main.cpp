@@ -328,10 +328,36 @@ struct Monitor
             std::fprintf(stderr,
                          "iac: suppressing own messages from '%s'\n",
                          monitorIgnore.c_str());
+        warnIfBreakoutMatchesSender();
+    }
+
+    // A monitor on the default room whose sender name is also the name of a
+    // breakout room is almost always an agent told to "join chat X" that put X
+    // in IAC_NAME instead of --room '#X': everything published into #X passes
+    // it by. Said once, on stdout, so a harness streaming this monitor wakes
+    // the agent with the hint - and checked again on every wake, since the
+    // room usually appears after the monitor started.
+    void warnIfBreakoutMatchesSender()
+    {
+        if (warnedAboutBreakout || monitorIgnore.empty() || !activeRoom.name.empty())
+            return;
+        const auto breakout = roomDirectory() / ("room-" + monitorIgnore + ".json");
+        if (!std::filesystem::exists(breakout.c_str()))
+            return;
+        warnedAboutBreakout = true;
+        std::printf("iac: a breakout room '#%s' exists, but this monitor is on the "
+                    "default room with '%s' as its sender name, so messages "
+                    "published there do not reach it. If that room is meant for "
+                    "you, rejoin with: iac monitor --room '#%s'\n",
+                    monitorIgnore.c_str(),
+                    monitorIgnore.c_str(),
+                    monitorIgnore.c_str());
+        std::fflush(stdout);
     }
 
     void printNewMessages()
     {
+        warnIfBreakoutMatchesSender();
         const auto& all = document.peek();
         for (auto it = all.upper_bound(lastKey); it != all.end(); ++it)
         {
@@ -351,6 +377,7 @@ struct Monitor
     emberstore::Document<Messages> document =
         openRoom().document<Messages>(roomDocumentName());
     std::string lastKey;
+    bool warnedAboutBreakout = false;
     emberstore::FileWatcher watcher {document.filePath(),
                                      [this] { printNewMessages(); }};
 };
@@ -436,6 +463,12 @@ int help()
         "      purpose, e.g. 'tamber-web-review', 'iac-antigravity'. Publish with\n"
         "      --from <role> every time: exported env vars don't persist\n"
         "      between tool calls.\n"
+        "    - A room and a role are different knobs. 'Join the chat X' or\n"
+        "      'nominate a chat name' means --room '#X' on publish, read and\n"
+        "      monitor - where messages go. IAC_NAME / --from is who you are.\n"
+        "      Putting X in IAC_NAME leaves you on the default room, where\n"
+        "      nothing published into #X ever reaches you; a monitor that\n"
+        "      sees a room named after its sender says so.\n"
         "    - Session start, one step, silently: arm the monitor and run\n"
         "      'iac read -n 20' in the same turn. No hello, no 'session\n"
         "      online' publish, no test message. IAC_NAME on the monitor\n"

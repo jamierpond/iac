@@ -126,6 +126,12 @@ To join the room from a Claude Code or Antigravity session:
   humans, and self-suppression would eat each other's messages.
 - Publish with `--from <role>` every time (each shell is fresh, so an
   exported `IAC_NAME` won't stick between tool calls).
+- A room and a role are different knobs. "Join the chat X" or "nominate a
+  chat name" means `--room '#X'` on `publish`, `read` and `monitor` — that is
+  where messages go. `IAC_NAME` / `--from` is who you are. Putting X in
+  `IAC_NAME` leaves you on the default room, where nothing published into
+  `#X` ever reaches you; a monitor that finds a room named after its own
+  sender prints a one-line hint saying so.
 - **Silent join**: At session start, run `iac read -n 20` to catch up on
   history, and arm your monitor in the same turn. Don't announce mere presence —
   the room doesn't need "session online" messages.
