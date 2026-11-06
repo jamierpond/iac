@@ -14,6 +14,7 @@ CPMAddPackage(
         NAME eacp
         GITHUB_REPOSITORY eyalamirmusic/eacp
         GIT_TAG main
+        OPTIONS "EACP_BUILD_GRAPHICS OFF"
 )
 
 CPMAddPackage(
@@ -21,10 +22,10 @@ CPMAddPackage(
         GITHUB_REPOSITORY tamber-inc/emberstore
         GIT_TAG main)
 
-if (APPLE)
-    set(platformSources Source/Platform-macOS.mm)
-elseif (WIN32)
+if (WIN32)
     set(platformSources Source/Platform-Windows.cpp)
+else ()
+    set(platformSources Source/Platform-Posix.cpp)
 endif ()
 
 add_executable(iac Source/Main.cpp ${platformSources})
