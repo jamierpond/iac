@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.25)
 
+set(CMAKE_PROJECT_TOP_LEVEL_INCLUDES ${CMAKE_CURRENT_LIST_DIR}/cmake/lockstep.cmake)
+
 project(iac LANGUAGES CXX)
 
 if (APPLE)
     enable_language(OBJCXX)
 endif ()
 
-include(cmake/CPM.cmake)
-
-# Declared ahead of emberstore so this pin wins CPM's dedup: carries the
+# Declared ahead of emberstore so this pin wins dedup: carries the
 # Windows captureOutput=false fix until it lands upstream.
 CPMAddPackage(
         NAME eacp

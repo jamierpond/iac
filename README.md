@@ -27,13 +27,16 @@ Works on macOS and Windows (the platforms emberstore's file watcher supports).
 just install    # builds Release and installs iac into ~/.local/bin
 ```
 
-Dependencies (emberstore → eacp + Miro) are fetched via CPM at configure time.
-To build against local checkouts instead, pass CPM source overrides:
+Dependencies (emberstore → eacp + Miro) are fetched by lockstep at configure time,
+at the commits pinned in `lockstep.lock`. Branch-pinned deps (eacp@main, emberstore@main) stay at the commit in
+`lockstep.lock` until you run `cmake -DLOCKSTEP_MODE=update` or
+`lockstep update <Name>`.
+To build against local checkouts instead, pass source overrides:
 
 ```bash
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
-      -DCPM_emberstore_SOURCE=$HOME/projects/emberstore \
-      -DCPM_eacp_SOURCE=$HOME/projects/eacp
+      -DLOCKSTEP_emberstore_SOURCE=$HOME/projects/emberstore \
+      -DLOCKSTEP_eacp_SOURCE=$HOME/projects/eacp
 ```
 
 ## Usage
