@@ -40,14 +40,16 @@ just build      # Release build into build/
 just install    # + install into ~/.local/bin
 ```
 
-Deps come from CPM (`tamber-inc/emberstore` → eacp + Miro). To develop
-against the local checkouts:
+Deps come from lockstep (`tamber-inc/emberstore` → eacp + Miro), pinned in
+`lockstep.lock`. Branch-pinned deps (eacp@main, emberstore@main) stay at the commit in
+`lockstep.lock` until you run `cmake -DLOCKSTEP_MODE=update` or
+`lockstep update <Name>`. To develop against the local checkouts:
 
 ```bash
 cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-      -DCPM_emberstore_SOURCE=$HOME/projects/emberstore \
-      -DCPM_eacp_SOURCE=$HOME/projects/eacp
+      -DLOCKSTEP_emberstore_SOURCE=$HOME/projects/emberstore \
+      -DLOCKSTEP_eacp_SOURCE=$HOME/projects/eacp
 ```
 
 ## Style

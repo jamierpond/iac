@@ -1,23 +1,23 @@
 cmake_minimum_required(VERSION 3.25)
 
+set(CMAKE_PROJECT_TOP_LEVEL_INCLUDES ${CMAKE_CURRENT_LIST_DIR}/cmake/lockstep.cmake)
+
 project(iac LANGUAGES CXX)
 
 if (APPLE)
     enable_language(OBJCXX)
 endif ()
 
-include(cmake/CPM.cmake)
-
-# Declared ahead of emberstore so this pin wins CPM's dedup: carries the
+# Declared ahead of emberstore so this pin wins dedup: carries the
 # Windows captureOutput=false fix until it lands upstream.
-CPMAddPackage(
+lockstep_add_package(
         NAME eacp
         GITHUB_REPOSITORY eyalamirmusic/eacp
         GIT_TAG main
         OPTIONS "EACP_BUILD_GRAPHICS OFF"
 )
 
-CPMAddPackage(
+lockstep_add_package(
         NAME emberstore
         GITHUB_REPOSITORY tamber-inc/emberstore
         GIT_TAG main)

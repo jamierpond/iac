@@ -76,7 +76,7 @@ just install    # Build + install iac into ~/.local/bin
 just format     # clang-format -i on all source files
 ```
 
-Dependencies are managed via CPM (`tamber-inc/emberstore` → `eacp` + `Miro`).
+Dependencies are managed by lockstep (`tamber-inc/emberstore` → `eacp` + `Miro`), pinned in `lockstep.lock`. Branch-pinned deps (eacp@main, emberstore@main) stay at the commit in `lockstep.lock` until you run `cmake -DLOCKSTEP_MODE=update` or `lockstep update <Name>`.
 
 ## Code Style
 
