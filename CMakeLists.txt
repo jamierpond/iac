@@ -10,14 +10,14 @@ endif ()
 
 # Declared ahead of emberstore so this pin wins dedup: carries the
 # Windows captureOutput=false fix until it lands upstream.
-CPMAddPackage(
+lockstep_add_package(
         NAME eacp
         GITHUB_REPOSITORY eyalamirmusic/eacp
         GIT_TAG main
         OPTIONS "EACP_BUILD_GRAPHICS OFF"
 )
 
-CPMAddPackage(
+lockstep_add_package(
         NAME emberstore
         GITHUB_REPOSITORY tamber-inc/emberstore
         GIT_TAG main)
