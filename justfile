@@ -9,7 +9,7 @@ default:
 [doc('Configure + build (Release)')]
 build:
     cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-    cmake --build build --config Release -j
+    cmake --build build --config Release --target iac -j
 
 [doc('Build + install iac into ~/.local/bin')]
 [unix]
