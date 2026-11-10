@@ -37,4 +37,7 @@ if (WIN32)
     target_link_libraries(iac PRIVATE Shell32)
 endif ()
 
+# Keeps the directory libcurl was linked from in the installed binary, so it still loads when libcurl lives outside the system directories (Nix).
+set_target_properties(iac PROPERTIES INSTALL_RPATH_USE_LINK_PATH ON)
+
 install(TARGETS iac RUNTIME DESTINATION bin)
