@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <optional>
 #include <set>
 
 namespace iac
@@ -150,6 +151,16 @@ int forwardMonitorToRemoteRoom(const Room& room, const MonitorSettings& settings
                          {"--count", std::to_string(settings.count)});
     return runOverSsh(room, forwarded);
 }
+
+// Not Apps::run<Monitor>: on Linux it mistakes an executable started through
+// PATH for a plugin and returns before the loop runs.
+int runMonitorUntilQuit(const Room& room, const MonitorSettings& settings)
+{
+    auto monitor = std::optional<Monitor> {};
+    eacp::Threads::runEventLoop([&] { monitor.emplace(room, settings); });
+    monitor.reset();
+    return eacp::Apps::getReturnValue();
+}
 } // namespace
 
 int runMonitorCommand(const Room& room,
@@ -161,6 +172,6 @@ int runMonitorCommand(const Room& room,
 
     if (room.isRemote())
         return forwardMonitorToRemoteRoom(room, settings);
-    return eacp::Apps::run<Monitor>(room, settings);
+    return runMonitorUntilQuit(room, settings);
 }
 } // namespace iac

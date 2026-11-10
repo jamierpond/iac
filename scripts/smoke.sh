@@ -105,6 +105,38 @@ IAC_NAME= monitorWhilePublishing "--once --room $store" "smoke-tester:no filter"
 "$iac" publish "make the breakout" --from x --room "$store#smoke-tester"
 monitorWhilePublishing "--once --room $store" "other:after breakout"
 
+# Agents start the monitor as plain `iac`, found through PATH, and on Linux eacp
+# once took that for a plugin and exited at once: check it stays up while idle
+# and then prints a message published later.
+monitorStartedThroughPath()
+{
+    echo "=== monitor started as 'iac' through PATH"
+    ln -sf "$iac" "$work/bin/iac"
+    iac monitor --room "$store" > "$work/monitor-out" 2> "$work/monitor-err" \
+        < /dev/null &
+    local monitorProcess=$!
+    for _ in $(seq 50); do
+        grep -q "monitoring" "$work/monitor-err" 2> /dev/null && break
+        sleep 0.1
+    done
+    sleep 1
+    if kill -0 "$monitorProcess" 2> /dev/null; then
+        echo "still running while idle: yes"
+    else
+        echo "still running while idle: no"
+    fi
+    "$iac" publish "published while monitoring" --from other --room "$store"
+    sleep 0.5
+    kill "$monitorProcess" 2> /dev/null
+    wait "$monitorProcess" 2> /dev/null
+    rm -f "$work/bin/iac"
+    echo "--- stdout"
+    normalise < "$work/monitor-out"
+    echo "--- stderr"
+    normalise < "$work/monitor-err"
+}
+monitorStartedThroughPath
+
 run publish remote hello --room user@host:
 run publish remote hello --from bob --cwd /label --room 'user@host:~/store#design'
 run read --room user@host:/dir
