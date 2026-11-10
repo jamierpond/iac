@@ -28,7 +28,17 @@ else ()
     set(platformSources Source/Platform-Posix.cpp)
 endif ()
 
-add_executable(iac Source/Main.cpp ${platformSources})
+add_executable(iac
+        Source/Main.cpp
+        Source/HelpCommand.cpp
+        Source/Message.cpp
+        Source/MonitorCommand.cpp
+        Source/PublishCommand.cpp
+        Source/ReadCommand.cpp
+        Source/RemoteRoom.cpp
+        Source/Room.cpp
+        Source/RoomsCommand.cpp
+        ${platformSources})
 target_compile_features(iac PRIVATE cxx_std_20)
 target_link_libraries(iac PRIVATE emberstore)
 
