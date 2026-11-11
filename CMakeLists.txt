@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
 
+# The oldest macOS supported, as in eacp and the other pond apps: one value lets them share cached dependency libraries.
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
+
+set(LOCKSTEP_LIBRARY_CACHE ON CACHE BOOL
+        "Link each locked package's static libraries from lockstep's shared library cache when an earlier build compiled them from the same inputs, instead of compiling them again")
 set(CMAKE_PROJECT_TOP_LEVEL_INCLUDES ${CMAKE_CURRENT_LIST_DIR}/cmake/lockstep.cmake)
 
 project(iac LANGUAGES CXX)
@@ -8,14 +13,17 @@ if (APPLE)
     enable_language(OBJCXX)
 endif ()
 
-# Declared ahead of emberstore so this pin wins dedup: carries the
-# Windows captureOutput=false fix until it lands upstream.
+# No source this project compiles uses C++20 modules, so scanning each one for them is wasted work.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+
+# Declared ahead of emberstore so this pin, not emberstore's, decides which eacp commit iac builds.
 lockstep_add_package(
         NAME eacp
         GITHUB_REPOSITORY eyalamirmusic/eacp
-        GIT_TAG main
+        GIT_TAG develop
         OPTIONS "EACP_BUILD_GRAPHICS OFF"
-)
+        SYSTEM YES
+        EXCLUDE_FROM_ALL YES)
 
 lockstep_add_package(
         NAME emberstore
