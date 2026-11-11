@@ -1,27 +1,26 @@
-# iac dev command runner. Plain cmake — no wrapper CLI.
+# iac dev commands. Recipes are a line or two of cmake; anything longer is a
+# Node script in scripts/.
 
 set windows-shell := ["cmd.exe", "/c"]
+
+build_dir := "build"
+build_type := "Release"
+prefix := home_directory() / ".local"
 
 # Show the recipe list by default.
 default:
     @just --list
 
-[doc('Configure + build (Release)')]
+[doc('Configure + build iac')]
 build:
-    cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-    cmake --build build --config Release --target iac -j
+    cmake -B {{build_dir}} -S . -DCMAKE_BUILD_TYPE={{build_type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake --build {{build_dir}} --config {{build_type}} --target iac -j
 
-[doc('Build + install iac into ~/.local/bin')]
-[unix]
-install: build
-    cmake --install build --config Release --prefix "$HOME/.local"
+[doc('Build, then install iac into <prefix>/bin (default ~/.local/bin)')]
+install prefix=prefix: build
+    cmake --install {{build_dir}} --config {{build_type}} --prefix "{{prefix}}"
 
-[doc('Build + install iac into %USERPROFILE%\.local\bin')]
-[windows]
-install: build
-    cmake --install build --config Release --prefix {{ home_directory() }}\.local
-
-[doc('clang-format all sources in place')]
+[doc('clang-format every tracked source in place')]
 [unix]
 format:
     git ls-files '*.h' '*.cpp' '*.mm' | xargs clang-format -i
