@@ -25,8 +25,7 @@ lockstep_add_package(
         GITHUB_REPOSITORY eyalamirmusic/eacp
         GIT_TAG develop
         OPTIONS "EACP_BUILD_GRAPHICS OFF"
-        SYSTEM YES
-        EXCLUDE_FROM_ALL YES)
+        SYSTEM YES)
 
 lockstep_add_package(
         NAME emberstore
