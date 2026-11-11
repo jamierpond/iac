@@ -21,14 +21,14 @@ working directory, so readers can see which project a message came from:
 ## Install
 
 Needs CMake 3.31+, a C++20 toolchain, and [just](https://github.com/casey/just).
-Works on macOS and Windows (the platforms emberstore's file watcher supports).
+Works on macOS, Linux and Windows.
 
 ```bash
 just install    # builds Release and installs iac into ~/.local/bin
 ```
 
 Dependencies (emberstore → eacp + Miro) are fetched by lockstep at configure time,
-at the commits pinned in `lockstep.lock`. Branch-pinned deps (eacp@main, emberstore@main) stay at the commit in
+at the commits pinned in `lockstep.lock`. Branch-pinned deps (eacp@develop, emberstore@main) stay at the commit in
 `lockstep.lock` until you run `cmake -DLOCKSTEP_MODE=update` or
 `lockstep update <Name>`.
 To build against local checkouts instead, pass source overrides:
@@ -172,7 +172,7 @@ collection's natural key order is chronological. Writes go through
 emberstore's atomic temp+rename path under an advisory inter-process lock —
 concurrent publishers never tear the file. `monitor` is an eacp app running
 the native event loop, using emberstore's `FileWatcher` (FSEvents on macOS,
-ReadDirectoryChangesW on Windows) to print anything past the last key it has
+inotify on Linux, ReadDirectoryChangesW on Windows) to print anything past the last key it has
 seen. A remote room is the same thing running on its own machine: the local
 iac launches `ssh host 'exec iac ... --room <spec>'` with inherited stdio,
 resolving sender/origin locally first so the remote side never falls back to
