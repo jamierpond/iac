@@ -20,7 +20,7 @@ working directory, so readers can see which project a message came from:
 
 ## Install
 
-Needs CMake 3.31+, a C++20 toolchain, and [just](https://github.com/casey/just).
+Needs CMake 3.31+, Ninja, a C++20 toolchain, and [just](https://github.com/casey/just).
 Works on macOS, Linux and Windows.
 
 ```bash
@@ -29,14 +29,13 @@ just install    # builds Release and installs iac into ~/.local/bin
 
 Dependencies (emberstore → eacp + Miro) are fetched by lockstep at configure time,
 at the commits pinned in `lockstep.lock`. Branch-pinned deps (eacp@develop, emberstore@main) stay at the commit in
-`lockstep.lock` until you run `cmake -DLOCKSTEP_MODE=update` or
+`lockstep.lock` until you run `just update-deps` or
 `lockstep update <Name>`.
 To build against local checkouts instead, pass source overrides:
 
 ```bash
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
-      -DLOCKSTEP_emberstore_SOURCE=$HOME/projects/emberstore \
-      -DLOCKSTEP_eacp_SOURCE=$HOME/projects/eacp
+just build -DLOCKSTEP_emberstore_SOURCE=$HOME/projects/emberstore \
+           -DLOCKSTEP_eacp_SOURCE=$HOME/projects/eacp
 ```
 
 ## Usage
