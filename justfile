@@ -13,7 +13,7 @@ default:
 
 [doc('Configure + build iac')]
 build:
-    cmake -B {{build_dir}} -S . -DCMAKE_BUILD_TYPE={{build_type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake -B {{build_dir}} -S . -DCMAKE_BUILD_TYPE={{build_type}}
     cmake --build {{build_dir}} --config {{build_type}} --target iac -j
 
 [doc('Build, then install iac into <prefix>/bin (default ~/.local/bin)')]

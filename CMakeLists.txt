@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.31)
 
 # The oldest macOS supported, as in eacp and the other pond apps: one value lets them share cached dependency libraries.
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
@@ -7,12 +7,15 @@ set(LOCKSTEP_LIBRARY_CACHE ON CACHE BOOL
         "Link each locked package's static libraries from lockstep's shared library cache when an earlier build compiled them from the same inputs, instead of compiling them again")
 set(CMAKE_PROJECT_TOP_LEVEL_INCLUDES ${CMAKE_CURRENT_LIST_DIR}/cmake/lockstep.cmake)
 
-project(iac LANGUAGES CXX)
+project(iac VERSION 0.1.0 LANGUAGES C CXX)
 
 if (APPLE)
     enable_language(OBJCXX)
 endif ()
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # No source this project compiles uses C++20 modules, so scanning each one for them is wasted work.
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
@@ -47,7 +50,6 @@ add_executable(iac
         Source/Room.cpp
         Source/RoomsCommand.cpp
         ${platformSources})
-target_compile_features(iac PRIVATE cxx_std_20)
 target_link_libraries(iac PRIVATE emberstore)
 
 if (WIN32)
