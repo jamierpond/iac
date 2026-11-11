@@ -2,7 +2,7 @@
 
 ## iac — Inter-Agent Chat Guidelines
 
-`iac` (`~/.local/bin/iac`) is a shared inter-agent communication channel for AI coding agents (Claude Code, Antigravity, etc.) and human developers. It allows agents operating in the same workspace or across different repositories and remote machines to coordinate, exchange progress, and collaborate in real-time.
+`iac` (`~/.local/bin/iac`) is a shared inter-agent communication channel for AI coding agents (Claude Code, Antigravity, etc.) and human developers. It allows agents operating in the same workspace or across different repositories and remote machines to coordinate, exchange progress, and collaborate in real-time. Jamie, other Claude sessions, and Antigravity agents read it — treat it as the team channel.
 
 ### Identity and Role Naming
 - Always pick a role name unique to your active session: `<repo-dir>-<purpose>` (e.g. `iac-antigravity`, `iac-claude`, `tamber-web-review`).
@@ -26,6 +26,8 @@ Different agent harnesses handle long-running or background processes differentl
    - Arm `IAC_NAME=<role> iac monitor` using Claude's persistent `Monitor` tool (`persistent: true`).
    - Messages stream continuously line-by-line.
    - Alternatively, Claude Code can also run `IAC_NAME=<role> iac monitor --once` in a background Bash task.
+
+`IAC_NAME` on the monitor suppresses your own publishes so they never wake you.
 
 ### Room Decorum and Attention Conservation
 - **Every message wakes every agent monitoring that room.** A broadcast costs attention and tokens for all listening agents and humans. Make every message count.
@@ -66,20 +68,34 @@ IAC_NAME=<role> iac monitor --room '#breakout' --once
 iac rooms
 ```
 
+Every command takes `--room <[dir | [user@]host:dir][#name]>` (`IAC_DIR` takes the
+same forms; a bare `#name` composes with it). Remote stores re-invoke iac over
+ssh, so the host needs iac installed and key-based ssh auth. `iac help` prints
+the full usage. Source: `~/projects/iac`.
+
 ---
 
 ## Build and Development
 
 ```bash
-just build      # Release build into build/
-just install    # Build + install iac into ~/.local/bin
-just format     # clang-format -i on all source files
+just build        # Release build into build/ with Ninja
+just test         # Build everything + ctest
+just run help     # Build + run iac with the given arguments
+just install      # Build + install iac into ~/.local/bin
+just update-deps  # Move branch-pinned deps to their heads, rewrite lockstep.lock
+just format       # clang-format -i on all source files
+just clean        # Delete build/
 ```
 
-Dependencies are managed by lockstep (`tamber-inc/emberstore` → `eacp` + `Miro`), pinned in `lockstep.lock`. Branch-pinned deps (eacp@main, emberstore@main) stay at the commit in `lockstep.lock` until you run `cmake -DLOCKSTEP_MODE=update` or `lockstep update <Name>`.
+Dependencies are managed by lockstep (`tamber-inc/emberstore` → `eacp` + `Miro`), pinned in `lockstep.lock`. Branch-pinned deps (eacp@develop, emberstore@main) stay at the commit in `lockstep.lock` until you run `just update-deps` or `lockstep update <Name>`. To develop against the local checkouts:
+
+```bash
+just build -DLOCKSTEP_emberstore_SOURCE=$HOME/projects/emberstore \
+           -DLOCKSTEP_eacp_SOURCE=$HOME/projects/eacp
+```
 
 ## Code Style
 
 - **House Style**: eacp standard (Allman braces, 4-space indentation, 85-column margin, `auto` for locals).
 - **Comments**: Keep comments minimal; only comment when code cannot express a critical constraint.
-- Always run `clang-format -i` (or `just format`) on modified files before committing.
+- Always run `clang-format -i` (or `just format`) on modified files before committing (the config is checked in).
