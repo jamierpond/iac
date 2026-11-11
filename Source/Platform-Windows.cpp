@@ -46,7 +46,10 @@ std::vector<std::string> commandLineArguments(int, char*[])
     return arguments;
 }
 
-bool stdinIsTty() { return _isatty(_fileno(stdin)) != 0; }
+bool stdinIsTty()
+{
+    return _isatty(_fileno(stdin)) != 0;
+}
 
 std::tm localTime(std::time_t seconds)
 {

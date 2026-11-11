@@ -15,7 +15,10 @@ std::vector<std::string> commandLineArguments(int argc, char* argv[])
     return {argv + 1, argv + argc};
 }
 
-bool stdinIsTty() { return isatty(STDIN_FILENO) != 0; }
+bool stdinIsTty()
+{
+    return isatty(STDIN_FILENO) != 0;
+}
 
 std::tm localTime(std::time_t seconds)
 {
