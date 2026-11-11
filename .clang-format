@@ -8,7 +8,7 @@ AlignTrailingComments: false
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
+AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterDefinitionReturnType: None
@@ -53,7 +53,6 @@ Cpp11BracedListStyle: true
 BreakInheritanceList: BeforeComma
 SpaceBeforeRangeBasedForLoopColon: false
 BreakConstructorInitializersBeforeComma: true
-IndentPPDirectives: BeforeHash
 
 ---
 Language: ObjC
