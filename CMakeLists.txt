@@ -30,6 +30,9 @@ lockstep_add_package(
         GITHUB_REPOSITORY tamber-inc/emberstore
         GIT_TAG main)
 
+# Set after the packages, so only this project's own targets build with -Werror.
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+
 if (WIN32)
     set(platformSources Source/Platform-Windows.cpp)
 else ()
