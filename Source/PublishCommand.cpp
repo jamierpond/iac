@@ -1,19 +1,13 @@
 #include "Commands.h"
-#include "Message.h"
+#include "Publish.h"
 #include "RemoteRoom.h"
 
-#include <chrono>
-#include <cstdint>
 #include <cstdio>
-#include <random>
 
 namespace iac
 {
 namespace
 {
-constexpr auto messageKeySuffixMask = 0xffffu;
-constexpr auto messageKeyCapacity = 32;
-
 struct PublishArguments
 {
     std::string sender;
@@ -48,34 +42,13 @@ PublishArguments parsePublishArguments(const std::vector<std::string>& args,
     return parsed;
 }
 
-std::int64_t getMillisecondsSinceEpoch()
+int publishTextToLocalRoom(const Room& room,
+                           const std::string& text,
+                           const std::string& sender,
+                           const std::string& cwd)
 {
-    using namespace std::chrono;
-    return duration_cast<milliseconds>(system_clock::now().time_since_epoch())
-        .count();
-}
-
-// Zero-padded epoch millis so the collection's key order is chronological; a
-// random suffix keeps two agents publishing in the same millisecond apart.
-std::string makeMessageKey(std::int64_t timestamp)
-{
-    const auto suffix = std::random_device {}() & messageKeySuffixMask;
-    const auto timestampForFormat = static_cast<long long>(timestamp);
-    char key[messageKeyCapacity];
-    std::snprintf(key, sizeof(key), "%015lld-%04x", timestampForFormat, suffix);
-    return key;
-}
-
-int publishToLocalRoom(const Room& room,
-                       const std::string& text,
-                       const std::string& sender,
-                       const std::string& cwd)
-{
-    auto messages =
-        openRoomDatabase(room).collection<Message>(getRoomDocumentName(room));
     const auto message = Message {sender, text, cwd, getMillisecondsSinceEpoch()};
-
-    if (!messages.doc(makeMessageKey(message.timestamp)).set(message))
+    if (!publishToLocalRoom(room, message))
     {
         std::fprintf(
             stderr, "iac: could not write to %s\n", getRoomDirectory(room).c_str());
@@ -108,6 +81,6 @@ int runPublishCommand(const Room& room,
         return printUsageError();
     if (room.isRemote())
         return publishToRemoteRoom(room, parsed);
-    return publishToLocalRoom(room, parsed.text, parsed.sender, parsed.cwd);
+    return publishTextToLocalRoom(room, parsed.text, parsed.sender, parsed.cwd);
 }
 } // namespace iac

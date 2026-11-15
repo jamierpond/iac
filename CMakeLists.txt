@@ -39,25 +39,44 @@ else ()
     set(platformSources Source/Platform-Posix.cpp)
 endif ()
 
-add_executable(iac
-        Source/Main.cpp
+if (NOT TARGET NanoTest)
+    lockstep_add_package(
+            NAME NanoTest
+            GITHUB_REPOSITORY eyalamirmusic/NanoTest
+            GIT_TAG main
+            SYSTEM YES)
+endif ()
+
+# Everything but main(), so the tests link the same code the binary runs.
+add_library(iacCore STATIC
         Source/HelpCommand.cpp
         Source/Message.cpp
         Source/MonitorCommand.cpp
+        Source/Publish.cpp
         Source/PublishCommand.cpp
         Source/ReadCommand.cpp
         Source/RemoteRoom.cpp
         Source/Room.cpp
         Source/RoomsCommand.cpp
+        Source/StoreRooms.cpp
         ${platformSources})
-target_link_libraries(iac PRIVATE emberstore)
+target_include_directories(iacCore PUBLIC Source)
+target_link_libraries(iacCore PUBLIC emberstore)
 
 if (WIN32)
     # CommandLineToArgvW
-    target_link_libraries(iac PRIVATE Shell32)
+    target_link_libraries(iacCore PUBLIC Shell32)
 endif ()
+
+add_executable(iac Source/Main.cpp)
+target_link_libraries(iac PRIVATE iacCore)
 
 # Keeps the directory libcurl was linked from in the installed binary, so it still loads when libcurl lives outside the system directories (Nix).
 set_target_properties(iac PROPERTIES INSTALL_RPATH_USE_LINK_PATH ON)
 
 install(TARGETS iac RUNTIME DESTINATION bin)
+
+if (PROJECT_IS_TOP_LEVEL)
+    enable_testing()
+    add_subdirectory(Tests)
+endif ()

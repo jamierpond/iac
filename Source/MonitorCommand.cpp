@@ -60,9 +60,6 @@ struct Monitor
         , settings(settingsToUse)
     {
         eacp::Apps::setDockIconVisible(false);
-        const auto& all = document.peek();
-        if (!all.empty())
-            lastKey = all.rbegin()->first;
         std::fprintf(stderr, "iac: monitoring %s\n", document.filePath().c_str());
         if (!settings.ignoredSender.empty())
         {
@@ -114,19 +111,16 @@ struct Monitor
     void printNewMessages()
     {
         warnIfBreakoutMatchesSender();
-        const auto& all = document.peek();
-        for (auto it = all.upper_bound(lastKey); it != all.end(); ++it)
+        for (const auto& message: cursor.takeNewMessages(document.peek()))
         {
-            if (!isIgnored(it->second))
+            if (isIgnored(message))
+                continue;
+            printMessage(message);
+            if (settings.count > 0 && ++printedCount >= settings.count)
             {
-                printMessage(it->second);
-                if (settings.count > 0 && ++printedCount >= settings.count)
-                {
-                    eacp::Apps::quit();
-                    return;
-                }
+                eacp::Apps::quit();
+                return;
             }
-            lastKey = it->first;
         }
     }
 
@@ -135,7 +129,7 @@ struct Monitor
     std::size_t printedCount = 0;
     emberstore::Document<Messages> document =
         openRoomDatabase(room).document<Messages>(getRoomDocumentName(room));
-    std::string lastKey;
+    MessageCursor cursor {document.peek()};
     bool warnedAboutBreakout = false;
     emberstore::FileWatcher watcher {document.filePath(),
                                      [this] { printNewMessages(); }};

@@ -34,4 +34,5 @@ eacp::FilePath getRoomDirectory(const Room& room);
 emberstore::Database openRoomDatabase(const Room& room);
 
 std::string getRoomDocumentName(const Room& room);
+
 } // namespace iac

@@ -26,18 +26,8 @@ int printLastMessages(const Room& room, std::size_t count)
 {
     auto document =
         openRoomDatabase(room).document<Messages>(getRoomDocumentName(room));
-    const auto& all = document.peek();
-
-    auto skip = all.size() > count ? all.size() - count : std::size_t {0};
-    for (const auto& [key, message]: all)
-    {
-        if (skip > 0)
-        {
-            --skip;
-            continue;
-        }
+    for (const auto& message: getLastMessages(document.peek(), count))
         printMessage(message);
-    }
     return 0;
 }
 } // namespace

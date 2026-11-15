@@ -78,4 +78,5 @@ std::string getRoomDocumentName(const Room& room)
         return std::string {defaultRoomDocumentName};
     return std::string {namedRoomDocumentPrefix} + room.name;
 }
+
 } // namespace iac
