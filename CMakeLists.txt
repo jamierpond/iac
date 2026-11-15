@@ -39,6 +39,12 @@ else ()
     set(platformSources Source/Platform-Posix.cpp)
 endif ()
 
+# text-buffer turns its own warnings into errors unless the includer defines
+# this; iac keeps -Werror to its own targets (below), so a new compiler warning
+# inside a dependency can't stop iac building.
+function(set_strict_warnings_level target)
+endfunction()
+
 # eacp has no terminal UI. FTXUI draws iac chat; its own loop is not used:
 # an eacp timer pumps it, as in DiffView.
 lockstep_add_package(
