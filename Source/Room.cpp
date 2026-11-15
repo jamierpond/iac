@@ -9,9 +9,19 @@ namespace
 {
 constexpr auto homeRelativePrefix = std::string_view {"~/"};
 
+constexpr auto driveLetterColonIndex = std::size_t {1};
+
+// "C:\Users\..." or "C:/Users/..." is a Windows drive, not a host called C.
+bool isWindowsDrivePath(const std::string& store, std::size_t colon)
+{
+    return colon == driveLetterColonIndex
+           && std::isalpha(static_cast<unsigned char>(store[0])) != 0;
+}
+
 bool doesColonSeparateHost(const std::string& store, std::size_t colon)
 {
-    return colon != std::string::npos && colon > 0 && store.find('/') > colon;
+    return colon != std::string::npos && colon > 0 && store.find('/') > colon
+           && !isWindowsDrivePath(store, colon);
 }
 } // namespace
 
