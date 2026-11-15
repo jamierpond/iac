@@ -46,6 +46,35 @@ std::string buildRemoteShellCommand(const std::vector<std::string>& arguments)
         command += ' ' + shellQuote(argument);
     return command;
 }
+
+eacp::Processes::ProcessOptions makeSshOptions(const Room& room,
+                                               std::vector<std::string> arguments,
+                                               const char* terminalFlag)
+{
+    addForwardedRoomArgument(room, arguments);
+    auto options = eacp::Processes::ProcessOptions {};
+    options.executable = "ssh";
+    options.arguments = {terminalFlag, "-o", "ServerAliveInterval=30"};
+    if (!stdinIsTty())
+        options.arguments.add({"-o", "BatchMode=yes"});
+    options.arguments.push_back(room.sshTarget);
+    options.arguments.push_back(buildRemoteShellCommand(arguments));
+
+    // Inherited stdio keeps a remote 'monitor' streaming line by line.
+    options.captureOutput = false;
+    return options;
+}
+
+int runSsh(eacp::Processes::ProcessOptions options)
+{
+    const auto result = eacp::Processes::run(std::move(options));
+    if (!result.launched)
+    {
+        std::fprintf(stderr, "iac: could not run ssh\n");
+        return sshLaunchFailedExitCode;
+    }
+    return result.exitCode;
+}
 } // namespace
 
 std::string getShortHostname()
@@ -63,26 +92,11 @@ std::string getShortHostname()
 // to its own environment.
 int runOverSsh(const Room& room, std::vector<std::string> arguments)
 {
-    addForwardedRoomArgument(room, arguments);
-    const auto command = buildRemoteShellCommand(arguments);
+    return runSsh(makeSshOptions(room, std::move(arguments), "-T"));
+}
 
-    auto options = eacp::Processes::ProcessOptions {};
-    options.executable = "ssh";
-    options.arguments = {"-T", "-o", "ServerAliveInterval=30"};
-    if (!stdinIsTty())
-        options.arguments.add({"-o", "BatchMode=yes"});
-    options.arguments.push_back(room.sshTarget);
-    options.arguments.push_back(command);
-
-    // Inherited stdio keeps a remote 'monitor' streaming line by line.
-    options.captureOutput = false;
-
-    const auto result = eacp::Processes::run(std::move(options));
-    if (!result.launched)
-    {
-        std::fprintf(stderr, "iac: could not run ssh\n");
-        return sshLaunchFailedExitCode;
-    }
-    return result.exitCode;
+int runOverSshWithTerminal(const Room& room, std::vector<std::string> arguments)
+{
+    return runSsh(makeSshOptions(room, std::move(arguments), "-t"));
 }
 } // namespace iac

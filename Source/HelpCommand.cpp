@@ -13,6 +13,7 @@ constexpr auto usageText = R"(usage:
   iac monitor [--ignore-from <name>] [--once|-1] [-n|--count <count>]
   iac read [-n <count>]
   iac rooms
+  iac chat [--from <name>]
 
   every command also takes --room <[dir | [user@]host:dir][#name]>
 )";
@@ -49,6 +50,14 @@ commands:
   read      Print the last <count> messages, oldest first.
               -n <count>      how many to print (default 20)
   rooms     List the store's rooms, default room first.
+  chat      Full-screen chat for a person; bare 'iac' in a terminal
+            opens it. Rooms down the left with unread counts, the
+            open room live in the middle, a vim prompt at the bottom.
+            Enter sends; /join #room, /rooms, /quit; Tab or ctrl-n
+            next room, shift-Tab or ctrl-p previous; PgUp/PgDn
+            scroll; Esc to vim normal mode; ctrl-c quits. A remote
+            store runs the screen on its host over ssh -t.
+              --from <name>   sender name (default: jamie)
 
 rooms:
   Messages live in a store — an emberstore directory (default

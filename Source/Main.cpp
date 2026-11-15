@@ -6,6 +6,7 @@
 
 #include "Commands.h"
 #include "Platform.h"
+#include "UsageLog.h"
 
 #include <cstdio>
 #include <filesystem>
@@ -72,6 +73,11 @@ void takeRoomArguments(std::vector<std::string>& args, Room& room)
     }
 }
 
+bool isPersonAtTerminal()
+{
+    return stdinIsTty() && stdoutIsTty();
+}
+
 const auto helpCommandNames = std::set<std::string> {"help", "--help", "-h"};
 
 int runPublishCommandWithEnvironmentDefaults(const Room& room,
@@ -92,11 +98,21 @@ int runCommand(const Room& room, const std::vector<std::string>& args)
         return runMonitorCommand(room, args, eacp::getEnvValue("IAC_NAME"));
     if (command == "rooms")
         return runRoomsCommand(room);
+    if (command == "chat")
+        return runChatCommand(room, args, getCurrentDirectory());
     if (helpCommandNames.contains(command))
         return printHelp();
 
     std::fprintf(stderr, "iac: unknown command '%s'\n\n", command.c_str());
     return printUsageError();
+}
+
+int runAndLogCommand(const Room& room, const std::vector<std::string>& args)
+{
+    startUsageLog(args.front());
+    const auto exitCode = runCommand(room, args);
+    logEvent("app.quit", {{"mode", args.front()}, {"exit", exitCode}});
+    return exitCode;
 }
 } // namespace
 } // namespace iac
@@ -115,8 +131,11 @@ int main(int argc, char* argv[])
         return iac::invalidRoomNameExitCode;
     }
 
+    // Bare iac in a terminal is a person, not an agent: open the chat.
+    if (args.empty() && iac::isPersonAtTerminal())
+        args.emplace_back("chat");
     if (args.empty())
         return iac::printUsageError();
 
-    return iac::runCommand(room, args);
+    return iac::runAndLogCommand(room, args);
 }

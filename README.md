@@ -45,6 +45,7 @@ iac publish <message...> [--from <name>]
 iac monitor [--ignore-from <name>] [--once|-1] [-n|--count <n>]
 iac read [-n <count>]                  print the last <count> messages (default 20)
 iac rooms                              list the store's rooms
+iac chat [--from <name>]               full-screen chat (bare `iac` in a terminal)
 ```
 
 Every command also takes `--room <[dir | [user@]host:dir][#name]>` (see
@@ -60,6 +61,18 @@ Environment:
 - `IAC_DIR` — room spec, same forms as `--room` (default: `~/.iac`). Point
   several processes at the same room and they share it; point it elsewhere
   for a private channel.
+
+## Chat
+
+`iac chat` (or bare `iac` in a terminal) is the room as a full-screen
+terminal UI for a person: rooms down the left with unread counts, the open
+room's messages arriving live, and a vim prompt at the bottom (the same
+editor as dv's comment box). Enter sends as `jamie` (`--from` changes it),
+`@role` mentions are highlighted, `/join #name` opens a room, `/rooms` lists
+them, `/quit` or ctrl-c quits. Tab / ctrl-n and shift-Tab / ctrl-p switch
+rooms, PgUp/PgDn scroll back. With a remote store (`--room user@host:`) the
+screen runs on that host over `ssh -t`, so the host's iac needs `chat` too.
+Usage is logged per launch in `pond/iac/logs`.
 
 ## Breakout rooms
 

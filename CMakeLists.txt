@@ -39,6 +39,35 @@ else ()
     set(platformSources Source/Platform-Posix.cpp)
 endif ()
 
+# eacp has no terminal UI. FTXUI draws iac chat; its own loop is not used:
+# an eacp timer pumps it, as in DiffView.
+lockstep_add_package(
+        NAME ftxui
+        GITHUB_REPOSITORY ArthurSonzogni/FTXUI
+        GIT_TAG v7.0.3
+        SYSTEM YES
+        OPTIONS
+            "FTXUI_ENABLE_INSTALL OFF"
+            "FTXUI_QUIET ON")
+
+# VimEditor, the editor behind chat's prompt, the same one dv's comment box uses.
+#   cmake -B build -DLOCKSTEP_text-buffer_SOURCE=$HOME/projects/text-buffer
+lockstep_add_package(
+        NAME text-buffer
+        GITHUB_REPOSITORY jamierpond/text-buffer
+        GIT_TAG main
+        SYSTEM YES)
+
+# Only Rudder's SessionLog (the per-launch usage log) and PondApp (the pond
+# data folder) are used; RUDDER_CLIENT_ONLY leaves the Rudder app unbuilt.
+#   cmake -B build -DLOCKSTEP_Rudder_SOURCE=$HOME/projects/Rudder
+lockstep_add_package(
+        NAME Rudder
+        GITHUB_REPOSITORY jamierpond/Rudder
+        GIT_TAG main
+        OPTIONS "RUDDER_CLIENT_ONLY ON"
+        SYSTEM YES)
+
 if (NOT TARGET NanoTest)
     lockstep_add_package(
             NAME NanoTest
@@ -49,6 +78,13 @@ endif ()
 
 # Everything but main(), so the tests link the same code the binary runs.
 add_library(iacCore STATIC
+        Source/ChatCommand.cpp
+        Source/ChatRooms.cpp
+        Source/ChatScreen.cpp
+        Source/ChatSession.cpp
+        Source/ChatView.cpp
+        Source/ComposeLine.cpp
+        Source/EditorKeys.cpp
         Source/HelpCommand.cpp
         Source/Message.cpp
         Source/MonitorCommand.cpp
@@ -59,9 +95,17 @@ add_library(iacCore STATIC
         Source/Room.cpp
         Source/RoomsCommand.cpp
         Source/StoreRooms.cpp
+        Source/UsageLog.cpp
         ${platformSources})
 target_include_directories(iacCore PUBLIC Source)
-target_link_libraries(iacCore PUBLIC emberstore)
+target_link_libraries(iacCore PUBLIC
+        emberstore
+        VimEditor
+        SessionLog
+        PondApp
+        ftxui::screen
+        ftxui::dom
+        ftxui::component)
 
 if (WIN32)
     # CommandLineToArgvW

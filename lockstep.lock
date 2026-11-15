@@ -34,8 +34,8 @@
       "usesGitLfs": false
     },
     {
-      "commit": "e6fc9b9acd899fbafc9431637a98198d484f6fd5",
-      "hash": "3128bcecc5b61f1e9af0b788a09221c7fd90333ce3dafd38438a5431f603ed5a",
+      "commit": "47dc6d5d34d1fc08a70e3bab7683d415e6f3fd77",
+      "hash": "3444464da7091e313480a0a2ad63692e4e0e091ca10dd098d9b363ede62e0835",
       "kind": "git",
       "name": "Miro",
       "patches": [],
@@ -82,8 +82,24 @@
       "usesGitLfs": false
     },
     {
-      "commit": "257563bee87e69bae41ecf29934c37f3eaec7e49",
-      "hash": "18142ae63e1d5485fefa46703415d6b204ff85f45db7d391c79aee146b1d1537",
+      "commit": "5c8d7338a538be655b5b349d9f2e20bd3f82a0ab",
+      "hash": "58962fbeb80e4973c4e7b3f564ea8ce6ea430d1204a048404b4483c68ff80bc9",
+      "kind": "git",
+      "name": "Rudder",
+      "patches": [],
+      "requestedRef": "main",
+      "submoduleSelection": {
+        "isRecursive": true,
+        "isRestricted": false,
+        "paths": []
+      },
+      "submodules": [],
+      "url": "https://github.com/jamierpond/Rudder.git",
+      "usesGitLfs": false
+    },
+    {
+      "commit": "2c1487ac07cd4fbd047ac7363cd60603b1912093",
+      "hash": "47f8a2135ebe8cd49ef461ac4030f12a62daeb42e672f760648d9205e916e930",
       "kind": "git",
       "name": "eacp",
       "patches": [],
@@ -114,6 +130,22 @@
       "usesGitLfs": false
     },
     {
+      "commit": "f921fad208912747c17d129a8ef75ec7624b6eec",
+      "hash": "76d9a5b06877766b4efe35bb06ad14e91766b7b597e8975f464b946e0b5c568c",
+      "kind": "git",
+      "name": "ftxui",
+      "patches": [],
+      "requestedRef": "v7.0.3",
+      "submoduleSelection": {
+        "isRecursive": true,
+        "isRestricted": false,
+        "paths": []
+      },
+      "submodules": [],
+      "url": "https://github.com/ArthurSonzogni/FTXUI.git",
+      "usesGitLfs": false
+    },
+    {
       "commit": "a8d28bd082bff18ffbe80996e922b012f915cf07",
       "hash": "3f41212a26fa42c9a22279d049ebeff03f90a25786285da20ef7e753e4ed584d",
       "kind": "git",
@@ -128,8 +160,24 @@
       "submodules": [],
       "url": "https://github.com/KhronosGroup/glslang.git",
       "usesGitLfs": false
+    },
+    {
+      "commit": "05b4e36ad766fa67a47933c182f07cf508cada62",
+      "hash": "9a316e024657d9c79e136d20b2538f48627b1e4820be726a0ccedd2bcf08cb0a",
+      "kind": "git",
+      "name": "text-buffer",
+      "patches": [],
+      "requestedRef": "main",
+      "submoduleSelection": {
+        "isRecursive": true,
+        "isRestricted": false,
+        "paths": []
+      },
+      "submodules": [],
+      "url": "https://github.com/jamierpond/text-buffer.git",
+      "usesGitLfs": false
     }
   ],
-  "root": "bfd939549028ff6d2aacbcf070dbe3ebab559d92f3e3ae170d9d7cf36f2f06e1",
+  "root": "ed2e3364dc04f1e2474c5bad808c3522f6aca19480fa694e18da1711ad7ba18c",
   "version": 1
 }
