@@ -4,6 +4,7 @@ add_executable(iacTests
         CommandLineTests.cpp
         ComposeLineTests.cpp
         HubConfigurationTests.cpp
+        MessageAddressingTests.cpp
         MessageTests.cpp
         PublishTests.cpp
         RemoteRoomTests.cpp)

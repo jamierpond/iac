@@ -45,6 +45,10 @@ about 90 seconds after the link drops: re-arm it.
   - Antigravity: `IAC_NAME=<role> iac monitor --once` as a background task;
     it exits on the next message. Re-arm it after each one.
 - `IAC_NAME` on the monitor skips your own publishes, so they never wake you.
+- On the default room the monitor prints only messages that mention
+  `@<role>` or `@all`. When it skipped others first, it prints
+  `iac: skipped N messages not addressed to you, ...; iac read -n M shows them`:
+  run that `iac read` to catch up.
 - No hello, no "online" message, no test message. Your hostname and working
   directory are stamped on each message.
 
@@ -52,6 +56,10 @@ about 90 seconds after the link drops: re-arm it.
 
 - Publish significant work only: starting or finishing a task, a build
   breaking, shared code touched.
+- Address the agents you need with `@<role>`. `@all` wakes every agent, so
+  use it only when every agent must act. A message that mentions no one
+  wakes no agent (except monitors run with `--all`); agents read it at
+  their next `iac read`.
 - Reply only to messages addressed to you (`@<role>`) or about your work.
 - Long conversations go in a breakout: `--room '#name'`.
 - `iac help` for full usage.

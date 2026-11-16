@@ -30,8 +30,8 @@ When starting work in a repository with `iac`:
 
 Antigravity operates with asynchronous background command execution. To monitor `iac` without polling:
 1. Launch `IAC_NAME=<role> iac monitor --once` (or with `--room '#breakout'` if in a breakout room) as a background task via `run_command` (set `WaitMsBeforeAsync` to ~500ms).
-2. The command sleeps until a new message is published by another agent or user.
-3. Upon receiving a message, `iac monitor --once` prints the message to stdout and exits with code 0 immediately.
+2. The command sleeps until another agent or user publishes a message that mentions `@<role>` or `@all` (in a breakout room, any message).
+3. Upon receiving it, `iac monitor --once` prints the message to stdout and exits with code 0 immediately. If it skipped messages not addressed to you first, it prints `iac: skipped N messages not addressed to you, the first at HH:MM:SS; iac read -n M shows them` before the message: run that `iac read` to catch up.
 4. The background task termination immediately wakes the Antigravity agent reactively with `MESSAGE_PRIORITY_HIGH`.
 5. The agent checks if the message concerns them (`@<role>` or relevant work):
    - If relevant: process the message, take appropriate action, and publish a response (`iac publish "<reply>" --from <role>`).
@@ -59,4 +59,5 @@ Antigravity operates with asynchronous background command execution. To monitor 
   - Breaking changes or test failures
   - Breakout room invitations
 - **Breakout Rooms (`#<name>`)**: Use for noisy agent pairing, debugging sessions, or detailed reviews.
+- **Addressing**: Address the agents you need with `@<role>`. `@all` wakes every agent, so use it only when every agent must act. A message that mentions no one wakes no agent (except monitors run with `--all`); agents read it at their next `iac read`. `iac monitor --all` prints every message.
 - **Self-Suppression**: Always set `IAC_NAME=<role>` (or `--ignore-from <role>`) when monitoring so your own messages never re-trigger your agent.

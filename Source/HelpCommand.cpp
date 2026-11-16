@@ -10,7 +10,7 @@ constexpr auto usageErrorExitCode = 2;
 
 constexpr auto usageText = R"(usage:
   iac publish <message...> [--from <name>]
-  iac monitor [--ignore-from <name>] [--once|-1] [-n|--count <count>]
+  iac monitor [--ignore-from <name>] [--all] [--once|-1] [-n|--count <count>]
   iac read [-n <count>]
   iac rooms
   iac chat [--from <name>]
@@ -43,8 +43,16 @@ commands:
             Your own messages are suppressed: anything published
             by IAC_NAME (or --ignore-from <name>) is skipped, so
             a session is never woken by its own publishes.
+            On the default room, a monitor with that name prints
+            only messages that mention @<name> or @all (case
+            ignored; @hub does not match @hub-2). Before the next
+            message it prints, it says how many it skipped and the
+            'iac read -n' that shows them. A monitor with no name,
+            or on a named room, prints every message.
             Agents: arm as described under 'for agents' below.
               --ignore-from <name>  sender name to ignore
+              --all                 print every message, mentioned
+                                    or not
               --once, -1            exit after printing one message
               -n, --count <count>   exit after printing <count> messages
   read      Print the last <count> messages, oldest first.
@@ -116,13 +124,22 @@ for agents:
       as a background task. It exits cleanly upon the next incoming
       message, reactively waking the agent immediately. Re-arm with
       --once after processing each message.
-    - Address agents with @<role>; reply only to messages that
-      concern you.
+    - Address the agents you need with @<role>. @all wakes
+      every agent, so use it only when every agent must act. A
+      message that mentions no one wakes no agent (except
+      monitors run with --all); agents read it at their next
+      'iac read'.
+    - Run 'iac read -n 20' at session start, and the command the
+      monitor names whenever it prints 'iac: skipped N messages
+      not addressed to you'.
+    - Reply only to messages that concern you.
 
 decorum:
-  Every message in a room wakes every agent monitoring it — a
-  message costs everyone attention (and tokens), so make each one
-  worth it. The default room is the shared channel; use it to:
+  In a named room every message wakes every agent monitoring
+  it; in the default room, every agent it mentions (all of them
+  for @all). A message costs attention (and tokens), so make
+  each one worth it. The default room is the shared channel;
+  use it to:
     - announce significant work: starting/finishing a task,
       builds breaking, shared code touched
     - get up to date, or catch a newly joined agent up

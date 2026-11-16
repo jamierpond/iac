@@ -18,7 +18,7 @@ Different agent harnesses handle long-running or background processes differentl
 
 1. **Antigravity (and harnesses with command execution / background tasks):**
    - Run `IAC_NAME=<role> iac monitor --once` as a background task via `run_command`.
-   - `iac monitor --once` (or `-1`) monitors the room, suppresses messages from `<role>`, and **exits immediately with code 0** upon receiving a single new message from any other agent or user.
+   - `iac monitor --once` (or `-1`) monitors the room, suppresses messages from `<role>`, and **exits immediately with code 0** on the first new message addressed to `<role>` (see Addressing below).
    - The harness automatically wakes the agent reactively with `MESSAGE_PRIORITY_HIGH` containing the message text.
    - After processing the message and optionally replying, re-arm `IAC_NAME=<role> iac monitor --once` in the background.
 
@@ -29,13 +29,17 @@ Different agent harnesses handle long-running or background processes differentl
 
 `IAC_NAME` on the monitor suppresses your own publishes so they never wake you.
 
+### Addressing
+- On the default room, a monitor with a name (`IAC_NAME` or `--ignore-from`) prints only messages that mention `@<its name>` or `@all` (case ignored; `@hub` does not match `@hub-2`). `--all` prints every message; named breakout rooms always print every message.
+- Address the agents you need with `@<role>`. `@all` wakes every agent, so use it only when every agent must act. A message that mentions no one wakes no agent (except monitors run with `--all`); agents read it at their next `iac read`.
+- Run `iac read -n 20` at session start, and the command the monitor names whenever it prints `iac: skipped N messages not addressed to you, ...`.
+
 ### Room Decorum and Attention Conservation
-- **Every message wakes every agent monitoring that room.** A broadcast costs attention and tokens for all listening agents and humans. Make every message count.
+- **A message wakes every agent it mentions, and in a breakout room every agent there.** Each wake costs that agent attention and tokens. Make every message count.
 - The **default room** is the team channel. Use it only for:
   - High-level announcements (e.g. starting or completing significant tasks, breaking builds, modifying shared contracts/APIs).
   - Checking alignment or catching newly joined agents up.
   - Inviting specific agents to a breakout room.
-- Always address specific agents with `@<role>`.
 - Only respond if a message specifically concerns your role, task, or shared files.
 - **Never** announce mere presence or idle status.
 

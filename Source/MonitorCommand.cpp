@@ -1,5 +1,6 @@
 #include "Commands.h"
 #include "Message.h"
+#include "MessageAddressing.h"
 #include "RemoteRoom.h"
 
 #include <emberstore/FileWatcher.h>
@@ -18,12 +19,15 @@ constexpr auto decimalBase = 10;
 
 struct MonitorSettings
 {
-    // Sender whose messages 'monitor' suppresses, so a session is never woken
-    // by its own publishes. From --ignore-from, else IAC_NAME; empty disables.
+    // This agent's name: its own messages are suppressed, and on the default
+    // room only messages mentioning it print. From --ignore-from, else
+    // IAC_NAME; empty disables both.
     std::string ignoredSender;
     std::size_t count = 0;
+    bool printsEveryMessage = false;
 };
 
+constexpr auto printEveryMessageFlag = "--all";
 const auto onceFlags = std::set<std::string> {"--once", "-1"};
 const auto countFlags = std::set<std::string> {"-n", "--count"};
 
@@ -37,6 +41,11 @@ MonitorSettings parseMonitorArguments(const std::vector<std::string>& args,
         if (args[i] == "--ignore-from" && hasValue)
         {
             settings.ignoredSender = args[++i];
+            continue;
+        }
+        if (args[i] == printEveryMessageFlag)
+        {
+            settings.printsEveryMessage = true;
             continue;
         }
         if (onceFlags.contains(args[i]))
@@ -65,6 +74,13 @@ struct Monitor
         {
             std::fprintf(stderr,
                          "iac: suppressing own messages from '%s'\n",
+                         settings.ignoredSender.c_str());
+        }
+        if (isFilteringToAddressedMessages())
+        {
+            std::fprintf(stderr,
+                         "iac: printing only messages that mention @%s or @all "
+                         "(--all prints every message)\n",
                          settings.ignoredSender.c_str());
         }
         warnIfBreakoutMatchesSender();
@@ -108,14 +124,50 @@ struct Monitor
                && message.sender == settings.ignoredSender;
     }
 
+    // Named breakout rooms are never filtered: whoever joined one wants all of it.
+    bool isFilteringToAddressedMessages() const
+    {
+        return !settings.printsEveryMessage && isOnDefaultRoomWithSenderName();
+    }
+
+    bool isNotAddressedToThisAgent(const Message& message) const
+    {
+        return isFilteringToAddressedMessages()
+               && !isMessageAddressedTo(message.text, settings.ignoredSender);
+    }
+
+    void skipMessage(const Message& message)
+    {
+        if (skipped.notAddressedCount == 0)
+            skipped.firstSkippedTimeOfDay = formatTimeOfDay(message);
+        ++skipped.notAddressedCount;
+    }
+
+    void printSkippedMessagesLine()
+    {
+        if (skipped.notAddressedCount == 0)
+            return;
+        skipped.readCountThatShowsThem = messagesSinceLastPrinted;
+        std::printf("%s\n", describeSkippedMessages(skipped).c_str());
+        skipped = {};
+    }
+
     void printNewMessages()
     {
         warnIfBreakoutMatchesSender();
         for (const auto& message: cursor.takeNewMessages(document.peek()))
         {
+            ++messagesSinceLastPrinted;
             if (isIgnored(message))
                 continue;
+            if (isNotAddressedToThisAgent(message))
+            {
+                skipMessage(message);
+                continue;
+            }
+            printSkippedMessagesLine();
             printMessage(message);
+            messagesSinceLastPrinted = 0;
             if (settings.count > 0 && ++printedCount >= settings.count)
             {
                 eacp::Apps::quit();
@@ -127,6 +179,8 @@ struct Monitor
     Room room;
     MonitorSettings settings;
     std::size_t printedCount = 0;
+    std::size_t messagesSinceLastPrinted = 0;
+    SkippedMessages skipped;
     emberstore::Document<Messages> document =
         openRoomDatabase(room).document<Messages>(getRoomDocumentName(room));
     MessageCursor cursor {document.peek()};
@@ -140,6 +194,8 @@ int forwardMonitorToRemoteRoom(const Room& room, const MonitorSettings& settings
     auto forwarded = std::vector<std::string> {"monitor"};
     if (!settings.ignoredSender.empty())
         forwarded.insert(forwarded.end(), {"--ignore-from", settings.ignoredSender});
+    if (settings.printsEveryMessage)
+        forwarded.emplace_back(printEveryMessageFlag);
     if (settings.count > 0)
         forwarded.insert(forwarded.end(),
                          {"--count", std::to_string(settings.count)});

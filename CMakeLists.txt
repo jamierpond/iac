@@ -94,6 +94,7 @@ add_library(iacCore STATIC
         Source/HelpCommand.cpp
         Source/HubConfiguration.cpp
         Source/Message.cpp
+        Source/MessageAddressing.cpp
         Source/MonitorCommand.cpp
         Source/Publish.cpp
         Source/PublishCommand.cpp

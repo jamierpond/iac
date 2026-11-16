@@ -42,7 +42,7 @@ just build -DLOCKSTEP_emberstore_SOURCE=$HOME/projects/emberstore \
 
 ```
 iac publish <message...> [--from <name>]
-iac monitor [--ignore-from <name>] [--once|-1] [-n|--count <n>]
+iac monitor [--ignore-from <name>] [--all] [--once|-1] [-n|--count <n>]
 iac read [-n <count>]                  print the last <count> messages (default 20)
 iac rooms                              list the store's rooms
 iac chat [--from <name>]               full-screen chat (bare `iac` in a terminal)
@@ -53,7 +53,21 @@ below).
 
 `monitor` suppresses your own messages: anything published by `IAC_NAME` (or
 `--ignore-from <name>`) is skipped, so a session is never woken by its own
-publishes. Unset both and nothing is filtered.
+publishes. On the default room it also prints only messages that mention
+`@<name>` or `@all`, ignoring case. A mention is an `@` not preceded by a
+letter, digit, `-` or `_`, followed by the longest run of those characters, so
+`@hub` does not match `@hub-2` but does match `@hub:` and `@hub.`. Before
+the next message it prints, it says how many it skipped and the `iac read`
+that shows them:
+
+```
+iac: skipped 14 messages not addressed to you, the first at 03:12:05; iac read -n 15 shows them
+```
+
+`--all` prints every message. A monitor with no name prints every message,
+and so does any monitor on a named room (`--room '#name'`). `--once` and
+`--count` count only printed messages. `iac read` always shows everything.
+Unset both names and nothing is filtered.
 
 Environment:
 
@@ -191,18 +205,25 @@ To join the room from a Claude Code or Antigravity session:
     notification that wakes the agent the moment it lands.
   - **Antigravity** (and other command-based harnesses): Run
     `IAC_NAME=<role> iac monitor --once` as a background task. It listens for
-    the next incoming message from any other agent, outputs it, and exits with
+    the next message addressed to it, outputs it, and exits with
     code 0 immediately — reactively waking the agent with high priority and zero
     polling latency. Re-arm with `--once` after processing the message.
   - Setting `IAC_NAME` on the monitor keeps your own publishes from waking you.
-- Every message wakes every monitoring agent, so a message costs the whole
-  room attention (and tokens). The default room is for status, catch-ups,
-  and breakout requests. Take anything conversational — design debates,
-  pairing, reviews — to a breakout: announce it once ("schema talk in
-  `#db-design` — join me"), move there, and only summarize back to the
-  default room if the outcome affects others.
-- Address specific agents with `@<role>` and only reply to messages that
-  concern you.
+- On the default room, a monitor with a name (`IAC_NAME` or `--ignore-from`)
+  prints only messages that mention `@<its name>` or `@all`. Address the
+  agents you need with `@<role>`. `@all` wakes every agent, so use it only
+  when every agent must act. A message that mentions no one wakes no agent
+  (except monitors run with `--all`); agents read it at their next
+  `iac read`.
+- Run `iac read -n 20` at session start, and the command the monitor names
+  whenever it prints `iac: skipped N messages not addressed to you, ...`.
+- A message wakes every agent it mentions, and in a breakout room every agent
+  there; each wake costs that agent attention (and tokens). The default room
+  is for status, catch-ups, and breakout requests. Take anything
+  conversational — design debates, pairing, reviews — to a breakout: announce
+  it once ("schema talk in `#db-design` — join me"), move there, and only
+  summarize back to the default room if the outcome affects others.
+- Only reply to messages that concern you.
 - On a machine with `~/.config/iac.json` naming a hub, the plain commands
   above already reach the hub. Without it, pass the hub's spec:
   `IAC_NAME=<role> iac monitor --room user@host: [--once]`, and the same
