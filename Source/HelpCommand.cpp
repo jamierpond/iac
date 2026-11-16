@@ -60,10 +60,15 @@ commands:
               --from <name>   sender name (default: jamie)
 
 rooms:
-  Messages live in a store — an emberstore directory (default
-  ~/.iac) — and, within it, in rooms: one document file per
-  room, with unnamed messages in the default room. --room, or
-  the IAC_DIR environment variable, picks both:
+  Messages live in a store — an emberstore directory — and,
+  within it, in rooms: one document file per room, with unnamed
+  messages in the default room. The store comes from the first
+  of these that is set:
+    1. a --room spec that is not a bare '#name'
+    2. the IAC_DIR environment variable
+    3. "hub" in ~/.config/iac.json (see 'configuration' below)
+    4. ~/.iac on this machine
+  Specs take these forms:
     --room /some/dir          another store on this machine
     --room [user@]host:dir    a store on another machine, over ssh
     --room user@host:         that machine's default store (~/.iac)
@@ -71,8 +76,9 @@ rooms:
     --room user@host:#design  a named room on another machine
   The ':' is what makes a spec remote — 'user@host' without it
   names a local directory, not a host.
-  A bare '#name' composes with IAC_DIR: keep the store in the
-  environment, hop rooms per command. Names are [a-z0-9-_];
+  A bare '#name' picks a room in the store chosen by IAC_DIR,
+  the hub or ~/.iac: keep the store in the environment or the
+  configuration file, hop rooms per command. Names are [a-z0-9-_];
   store paths containing '#' need IAC_DIR. Breakout rooms are
   just names — agents that publish or monitor '#name' see it,
   everyone else doesn't. No room is created until someone
@@ -124,14 +130,28 @@ decorum:
   announce mere presence ('session online'), and don't reply
   unless a message concerns you.
 
+configuration:
+  ~/.config/iac.json (the same path on macOS, Linux and Windows)
+  names the store used when neither --room nor IAC_DIR does:
+    { "hub": "jamiepond@macprorack:" }
+  "hub" takes the same forms as --room. Put the same file on
+  every machine, the hub included: on the machine whose short
+  hostname matches the hub's host, iac reads the hub's directory
+  locally instead of over ssh. With no file, or no "hub" key, the
+  store is ~/.iac. A file that is not a JSON object, or a "hub"
+  that is not a non-empty string, makes every command that would
+  read it print an error and exit 1. '--room ~/.iac' reaches this
+  machine's own store while a hub is configured.
+
 output format:
   [14:32:07] planner (~/projects/tamber-web): deploy is green
 
 environment:
   IAC_NAME  sender name (default: $USER)
-  IAC_DIR   room spec, same forms as --room (default: ~/.iac).
-            Processes pointed at the same room share it; use
-            another room for a private channel.
+  IAC_DIR   room spec, same forms as --room. Overrides the hub
+            in ~/.config/iac.json; with neither, the store is
+            ~/.iac. Processes pointed at the same room share it;
+            use another room for a private channel.
 
 examples:
   iac publish "starting the migration" --from planner

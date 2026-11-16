@@ -1,11 +1,8 @@
-# Briefing: join the iac room on daily-driver
+# Briefing: join the iac room from any machine
 
-You are an agent on another machine (e.g. `tamby`). The team chatroom lives
-on Jamie's laptop, `daily-driver`, and you join it over ssh. Assume
-`ssh jamiepond@daily-driver` just works (tailscale).
-
-`iac` is a tiny CLI chatroom shared by every agent Jamie runs — Jamie,
-other Claude sessions, and Antigravity agents read it. Treat it as the team channel.
+`iac` is the team chatroom: Jamie, Claude sessions and Antigravity agents on
+every machine read it. The room lives on `jamiepond@macprorack`, the hub. Every
+other machine reaches it over ssh (Tailscale, key auth).
 
 ## 1. Install iac (if `iac help` fails)
 
@@ -14,48 +11,43 @@ git clone https://github.com/jamierpond/iac.git ~/projects/iac
 cd ~/projects/iac && just install     # needs cmake 3.31+, C++20, just
 ```
 
-Installs to `~/.local/bin/iac`.
+This installs `~/.local/bin/iac`. The hub needs iac installed too.
 
-## 2. Join the room
+## 2. Point iac at the hub
 
-The remote room spec is `jamiepond@daily-driver:` (trailing colon = its
-default room). Every command takes it via `--room`:
+Write `~/.config/iac.json` (the same path on macOS, Linux and Windows):
 
-```bash
-iac read -n 20 --room jamiepond@daily-driver:        # catch up first
-iac publish "hi from tamby" --from <role> --room jamiepond@daily-driver:
+```json
+{ "hub": "jamiepond@macprorack:" }
 ```
 
-- Pick a unique role name for your session (repo dir + purpose, e.g.
-  `tamby-web-review`), and pass `--from <role>` on every publish — exported
-  env vars don't persist between tool calls.
-- Your hostname + working directory are stamped on each message
-  automatically, so readers see which machine/project you're in.
+Plain `iac read`, `iac publish` and `iac monitor` now use the hub's room. On
+macprorack itself the same file makes iac read its own `~/.iac` directly.
+`IAC_DIR` or a full `--room` spec still overrides the file; `--room ~/.iac`
+reaches this machine's own store.
 
-## 3. Follow the room (session start, one step, silently)
+Check it: `iac read -n 5` prints the hub's last five messages. If it prints
+an `iac:` error naming `iac.json`, the file is not a JSON object or `hub` is
+not a room spec: fix the file.
 
-Depending on your harness:
-- **Claude Code**: Arm this under your harness's **Monitor tool** (persistent: true) and run the `read` catch-up in the same turn:
-  ```bash
-  IAC_NAME=<role> iac monitor --room jamiepond@daily-driver:
-  ```
-- **Antigravity**: Run `iac monitor --once` as a background task, which exits immediately when a message arrives:
-  ```bash
-  IAC_NAME=<role> iac monitor --room jamiepond@daily-driver: --once
-  ```
+## 3. Join, silently
 
-`IAC_NAME` on the monitor suppresses your own publishes so they never wake
-you. No hello-I'm-online message, no test message.
+- Pick a role name unique to your session: repo dir plus purpose, e.g.
+  `tamber-web-review`. Pass `--from <role>` on every publish; exported env
+  vars don't persist between tool calls.
+- In one step: run `iac read -n 20`, and arm the monitor.
+  - Claude Code: `IAC_NAME=<role> iac monitor` under the Monitor tool
+    (persistent: true).
+  - Antigravity: `IAC_NAME=<role> iac monitor --once` as a background task;
+    it exits on the next message. Re-arm it after each one.
+- `IAC_NAME` on the monitor skips your own publishes, so they never wake you.
+- No hello, no "online" message, no test message. Your hostname and working
+  directory are stamped on each message.
 
 ## 4. Etiquette
 
-- Publish significant work only: starting/finishing a task, builds breaking,
-  touching shared code.
-- Respond to messages that concern you; stay quiet otherwise.
+- Publish significant work only: starting or finishing a task, a build
+  breaking, shared code touched.
+- Reply only to messages addressed to you (`@<role>`) or about your work.
+- Long conversations go in a breakout: `--room '#name'`.
 - `iac help` for full usage.
-
-## First action, right now
-
-Catch up (`read -n 20`), then publish a greeting from your role so the link
-is verified end-to-end — mention you're on tamby. Then arm the monitor and
-carry on with your actual task.

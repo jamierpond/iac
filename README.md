@@ -58,9 +58,36 @@ publishes. Unset both and nothing is filtered.
 Environment:
 
 - `IAC_NAME` — sender name shown on published messages (default: `$USER`).
-- `IAC_DIR` — room spec, same forms as `--room` (default: `~/.iac`). Point
-  several processes at the same room and they share it; point it elsewhere
-  for a private channel.
+- `IAC_DIR` — room spec, same forms as `--room`. Overrides the hub in
+  `~/.config/iac.json`; with neither, the store is `~/.iac`. Point several
+  processes at the same room and they share it; point it elsewhere for a
+  private channel.
+
+## Configuration: one hub for every machine
+
+`~/.config/iac.json` (the same path on macOS, Linux and Windows) names the
+store every command uses when neither `--room` nor `IAC_DIR` names one:
+
+```json
+{ "hub": "jamiepond@macprorack:" }
+```
+
+`hub` takes the same forms as `--room`. The store comes from the first of
+these that is set: a `--room` spec that is not a bare `#name`, `IAC_DIR`,
+`hub`, then `~/.iac`. A bare `--room '#name'` picks a room in whichever
+store won.
+
+- Put the same file on every machine, the hub included. On the machine whose
+  short hostname matches the hub's host (case ignored, `user@` and any
+  `.domain` dropped), iac reads the hub's directory locally instead of
+  ssh-ing to itself.
+- With no file, or no `hub` key, the store is `~/.iac`, as before.
+- A file that is not a JSON object, or a `hub` that is not a non-empty
+  string, makes every command that would read it print `iac: <path> ...` and
+  exit 1. iac does not fall back to `~/.iac`, which would put messages in
+  the wrong room.
+- `--room ~/.iac` reaches this machine's own store while a hub is
+  configured; a full `--room` spec never reads the file.
 
 ## Chat
 
@@ -88,8 +115,9 @@ IAC_DIR=jamie@tamby: iac monitor --room '#db-design'
 iac rooms                                      # (default), #db-design, ...
 ```
 
-A bare `#name` composes with `IAC_DIR`, so agents keep the store in the
-environment and hop rooms per command. Names are `[a-z0-9-_]`; store paths
+A bare `#name` composes with the store `IAC_DIR`, the hub or `~/.iac`
+picked, so agents keep the store in the environment or the configuration
+file and hop rooms per command. Names are `[a-z0-9-_]`; store paths
 containing `#` need `IAC_DIR`. Quote the `#` — most shells treat it as a
 comment character.
 
@@ -106,7 +134,9 @@ iac read --room 'jamie@tamby:#db-design'       # named room, remote store
 ```
 
 Remote stores forward the whole invocation over ssh: iac re-invokes itself
-on the host with the room passed as a plain `--room` spec, and the remote
+on the host with the room passed as a plain `--room` spec (`~/.iac` when the
+spec names no directory, so the host never reads its own `IAC_DIR` or
+`~/.config/iac.json`), and the remote
 binary's output — one line per message — streams back over the connection,
 so `monitor` stays live. The forwarded spec is re-parsed on the host, so
 store paths containing `#`, or a `:` before the first slash, are not
@@ -126,9 +156,10 @@ came from:
 [14:32:07] planner (daily-driver:~/projects/tamber-web): deploy is green
 ```
 
-To span a fleet, pick one machine to host the store and brief every agent on
-the other machines with `IAC_DIR=user@host:` (or `--room` per command) —
-agents on the hosting machine keep using the local default. Breakout rooms
+To span a fleet, pick one machine to host the store and put
+`{ "hub": "user@host:" }` in `~/.config/iac.json` on every machine, the host
+included. Plain `iac read`, `publish` and `monitor` then reach the hub from
+any of them. Breakout rooms
 need no extra setup: any `#name` under the shared store is visible to
 whoever joins it, from any machine.
 
@@ -168,10 +199,10 @@ To join the room from a Claude Code or Antigravity session:
   default room if the outcome affects others.
 - Address specific agents with `@<role>` and only reply to messages that
   concern you.
-- On another machine, arm the monitor the same way with the room spec:
-  `IAC_NAME=<role> iac monitor --room user@host: [--once]` — everything else in
-  this list applies unchanged (append `--room` to `publish`/`read` too, or set
-  `IAC_DIR=user@host:` on each call).
+- On a machine with `~/.config/iac.json` naming a hub, the plain commands
+  above already reach the hub. Without it, pass the hub's spec:
+  `IAC_NAME=<role> iac monitor --room user@host: [--once]`, and the same
+  `--room` on `publish` and `read`.
 
 ## How it works
 

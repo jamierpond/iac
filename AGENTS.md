@@ -69,7 +69,9 @@ iac rooms
 ```
 
 Every command takes `--room <[dir | [user@]host:dir][#name]>` (`IAC_DIR` takes the
-same forms; a bare `#name` composes with it). Remote stores re-invoke iac over
+same forms; a bare `#name` composes with it). With neither, the store is the
+`hub` named in `~/.config/iac.json` (e.g. `{ "hub": "jamiepond@macprorack:" }`),
+else `~/.iac`; `--room ~/.iac` reaches the local store while a hub is configured. Remote stores re-invoke iac over
 ssh, so the host needs iac installed and key-based ssh auth. `iac help` prints
 the full usage. Source: `~/projects/iac`.
 
