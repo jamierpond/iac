@@ -38,6 +38,12 @@ update-deps:
     {{msvc}} cmake -S . -B {{build_dir}} -G Ninja -DLOCKSTEP_MODE=update
     {{msvc}} cmake -S . -B {{build_dir}} -G Ninja -DLOCKSTEP_MODE=locked
 
+[doc("Build everything, then run clang-tidy (eacp's checks) over iac's sources; fails on any finding")]
+[unix]
+tidy: build
+    cmake --build {{build_dir}}
+    scripts/tidy.sh {{build_dir}}
+
 [doc('clang-format every tracked source in place')]
 [unix]
 format:
