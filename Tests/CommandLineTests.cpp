@@ -29,7 +29,7 @@ eacp::Processes::ProcessResult runIacInRoom(const std::string& roomSpecification
     options.environment = {{"IAC_NAME", ""}};
     arguments.insert(arguments.end(), {"--room", roomSpecification});
     for (auto& argument: arguments)
-        options.arguments.push_back(std::move(argument));
+        options.arguments.push_back(argument);
     return eacp::Processes::run(std::move(options));
 }
 

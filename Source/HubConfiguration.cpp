@@ -59,7 +59,7 @@ std::optional<Room> readHubRoomFromConfigurationFile(const eacp::FilePath& path)
     if (configuration.hub->empty())
     {
         throw ConfigurationFileError {
-            path.str() + ": \"hub\" must be a room spec such as \"user@host:\""};
+            path.str() + R"(: "hub" must be a room spec such as "user@host:")"};
     }
     return parseRoomSpecification(*configuration.hub);
 }

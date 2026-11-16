@@ -53,7 +53,7 @@ eacp::Processes::ProcessOptions makeSshOptions(const Room& room,
     options.executable = "ssh";
     options.arguments = {terminalFlag};
     for (auto& option: getSshConnectionOptions())
-        options.arguments.push_back(std::move(option));
+        options.arguments.push_back(option);
     if (!stdinIsTty())
         options.arguments.add({"-o", "BatchMode=yes"});
     options.arguments.push_back(room.sshTarget);

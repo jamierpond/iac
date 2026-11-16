@@ -46,7 +46,7 @@ auto tPublishNamedRoom = test("Publish/a named room is its own document, listed 
 
 auto tWindowsDriveIsLocal = test("Room/a Windows drive path is a local store, not a host") = []
 {
-    check(!parseRoomSpecification("C:\\Users\\me\\iac").isRemote());
+    check(!parseRoomSpecification(R"(C:\Users\me\iac)").isRemote());
     check(!parseRoomSpecification("C:/Users/me/iac#design").isRemote());
     check(parseRoomSpecification("c:").isRemote() == false);
     check(parseRoomSpecification("box:dir").isRemote());
