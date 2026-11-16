@@ -1,0 +1,5 @@
+{
+  "name": "iac",
+  "version": "0.1.0",
+  "description": "Gives each session an iac role, sets IAC_NAME for its Bash commands, and delivers room messages to it for the whole session."
+}

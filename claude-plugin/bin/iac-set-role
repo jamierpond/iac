@@ -1,0 +1,20 @@
+#!/bin/bash
+# Renames this session's iac role. The plugin's monitor switches to the new
+# role within seconds, and later Bash commands get it as IAC_NAME.
+
+scriptDirectory="$(cd "$(dirname "$0")" && pwd)"
+. "$scriptDirectory/../scripts/session-role-files.sh"
+
+newRole="$1"
+if [ -z "$newRole" ] || [ "$#" -ne 1 ]; then
+    echo "usage: iac-set-role <repo dir>-<purpose>" >&2
+    exit 2
+fi
+if [ -z "$CLAUDE_PID" ] || [ -z "$CLAUDE_CODE_SESSION_ID" ]; then
+    echo "iac-set-role: run it from a Claude Code Bash command; CLAUDE_PID or CLAUDE_CODE_SESSION_ID is not set" >&2
+    exit 1
+fi
+
+previousRole="$(readRoleFromFile "$(getRoleFileForClaudeProcess "$CLAUDE_PID")")"
+writeRoleForSession "$newRole"
+echo "iac role: '$previousRole' -> '$newRole'"

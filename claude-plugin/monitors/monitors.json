@@ -1,0 +1,7 @@
+[
+  {
+    "name": "iac-room",
+    "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/watch-room-for-session-role.sh\"",
+    "description": "iac room messages"
+  }
+]
