@@ -6,20 +6,25 @@
 #      A running monitor keeps the old binary until it exits; when it exits, the
 #      agent's harness reports that and the agent arms a new one.
 # 'iac chat' screens are listed, never ended: a person is using them.
-#   usage: scripts/update-all-machines.sh [--dry-run] [--checkout <dir>] <hub> [machine...]
+#   usage: scripts/update-all-machines.sh [--dry-run] [--keep-monitors] [--checkout <dir>] <hub> [machine...]
 #          a machine is an ssh target, or 'local' for this one
+#          --dry-run: installs nothing and ends nothing; prints each machine's
+#          installed version and the monitors step 2 would end
+#          --keep-monitors: step 1 only, for a change that 'iac monitor' does not use
 #          --checkout: the iac checkout on every machine, relative to its home
 #          directory or absolute; default: the path of the checkout this script is in
 set -u
 
-usage_end_line=12
+usage_end_line=15
 script_checkout=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 checkout_directory=${script_checkout#"$HOME"/}
 
 is_dry_run=false
+is_keeping_monitors=false
 while [ $# -gt 0 ]; do
     case $1 in
         --dry-run) is_dry_run=true; shift ;;
+        --keep-monitors) is_keeping_monitors=true; shift ;;
         --checkout) checkout_directory=${2:?--checkout needs a directory}; shift 2 ;;
         *) break ;;
     esac
@@ -57,8 +62,10 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
 fi
 git pull --ff-only --quiet
 just install >/dev/null
-git rev-parse --short HEAD
+"$HOME/.local/bin/iac" --version
 '
+
+print_installed_version_command='"$HOME/.local/bin/iac" --version'
 
 # Prints "<pid> <command>" for each iac process older than the installed binary.
 list_stale_commands='
@@ -93,34 +100,37 @@ list_stale_chat_commands="wanted=chat
 $list_stale_commands"
 
 exit_code=0
-expected_commit=""
+expected_version=""
 reached_machines=()
 
 echo "== install, hub first"
 for machine in "$@"; do
     if [ "$is_dry_run" = true ]; then
-        commit=$(echo "$change_to_checkout_command && git rev-parse --short HEAD" | run_on_machine "$machine" 2>&1)
+        version=$(echo "$print_installed_version_command" | run_on_machine "$machine" 2>&1)
     else
-        commit=$(echo "$install_commands" | run_on_machine "$machine" 2>&1)
+        version=$(echo "$install_commands" | run_on_machine "$machine" 2>&1)
     fi
     if [ $? -ne 0 ]; then
-        echo "$machine: NOT UPDATED: $(echo "$commit" | tail -1)"
+        echo "$machine: NOT UPDATED: $(echo "$version" | tail -1)"
         exit_code=1
         continue
     fi
-    commit=$(echo "$commit" | tail -1)
-    echo "$machine: $commit"
+    version=$(echo "$version" | tail -1)
+    echo "$machine: $version"
     reached_machines+=("$machine")
-    if [ -z "$expected_commit" ]; then
-        expected_commit=$commit
-    elif [ "$commit" != "$expected_commit" ]; then
-        echo "$machine: is on $commit, the hub is on $expected_commit"
+    if [ -z "$expected_version" ]; then
+        expected_version=$version
+    elif [ "$version" != "$expected_version" ]; then
+        echo "$machine: has '$version', the hub has '$expected_version'"
         exit_code=1
     fi
 done
 
 if [ $exit_code -ne 0 ] && [ "$is_dry_run" = false ]; then
     echo "not ending any monitor: fix the machines above first" >&2
+    exit $exit_code
+fi
+if [ "$is_keeping_monitors" = true ]; then
     exit $exit_code
 fi
 
