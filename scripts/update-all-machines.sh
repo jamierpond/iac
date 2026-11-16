@@ -6,41 +6,53 @@
 #      A running monitor keeps the old binary until it exits; when it exits, the
 #      agent's harness reports that and the agent arms a new one.
 # 'iac chat' screens are listed, never ended: a person is using them.
-#   usage: scripts/update-all-machines.sh [--dry-run] <hub> [machine...]
+#   usage: scripts/update-all-machines.sh [--dry-run] [--checkout <dir>] <hub> [machine...]
 #          a machine is an ssh target, or 'local' for this one
+#          --checkout: the iac checkout on every machine, relative to its home
+#          directory or absolute; default: the path of the checkout this script is in
 set -u
 
+usage_end_line=12
+script_checkout=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+checkout_directory=${script_checkout#"$HOME"/}
+
 is_dry_run=false
-if [ "${1:-}" = "--dry-run" ]; then
-    is_dry_run=true
-    shift
-fi
+while [ $# -gt 0 ]; do
+    case $1 in
+        --dry-run) is_dry_run=true; shift ;;
+        --checkout) checkout_directory=${2:?--checkout needs a directory}; shift 2 ;;
+        *) break ;;
+    esac
+done
 if [ $# -eq 0 ]; then
-    sed -n '2,11p' "$0" >&2
+    sed -n "2,${usage_end_line}p" "$0" >&2
     exit 64
 fi
+quoted_checkout_directory=$(printf %q "$checkout_directory")
 
 ssh_connect_timeout_seconds=10
 
-# The machine's login shell sets PATH (nix, ~/.local/bin); bash then runs the
-# commands from stdin, so they behave the same whatever the login shell is.
+# The machine's login shell sets PATH; bash then runs the commands from stdin,
+# so they behave the same whatever the login shell is. Some login zsh setups
+# leave out the directory holding just while login bash adds it: fall back to that.
 run_on_machine() {
     local machine=$1
     if [ "$machine" = "local" ]; then
         bash -s
     else
         ssh -o BatchMode=yes -o ConnectTimeout="$ssh_connect_timeout_seconds" "$machine" \
-            'exec "$SHELL" -lc "exec bash -s"'
+            'exec "$SHELL" -lc "command -v just >/dev/null 2>&1 && exec bash -s || exec bash -ls"'
     fi
 }
 
-install_commands='
+change_to_checkout_command="cd ~ && cd $quoted_checkout_directory"
+
+install_commands="
 set -eu
-# just and cmake come from nix on the Linux hub, and its login zsh does not add them.
-PATH="$HOME/.nix-profile/bin:$PATH"
-cd ~/projects/iac
+$change_to_checkout_command
+"'
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-    echo "uncommitted changes to tracked files in ~/projects/iac; not building" >&2
+    echo "uncommitted changes to tracked files in $PWD; not building" >&2
     exit 3
 fi
 git pull --ff-only --quiet
@@ -87,7 +99,7 @@ reached_machines=()
 echo "== install, hub first"
 for machine in "$@"; do
     if [ "$is_dry_run" = true ]; then
-        commit=$(echo 'cd ~/projects/iac && git rev-parse --short HEAD' | run_on_machine "$machine" 2>&1)
+        commit=$(echo "$change_to_checkout_command && git rev-parse --short HEAD" | run_on_machine "$machine" 2>&1)
     else
         commit=$(echo "$install_commands" | run_on_machine "$machine" 2>&1)
     fi
