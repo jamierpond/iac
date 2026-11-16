@@ -9,6 +9,7 @@ namespace iac
 namespace
 {
 constexpr auto sshLaunchFailedExitCode = 127;
+constexpr auto homeRelativePrefix = std::string_view {"~/"};
 
 std::string shellQuote(const std::string& text)
 {
@@ -23,17 +24,10 @@ std::string shellQuote(const std::string& text)
     return quoted + "'";
 }
 
-// The whole room — store directory plus '#name' — travels as a plain
-// --room argument, so the remote side needs nothing from its
-// environment; getRoomDirectory() expands a leading ~ over there.
 void addForwardedRoomArgument(const Room& room, std::vector<std::string>& arguments)
 {
-    if (room.directory.empty() && room.name.empty())
-        return;
-    auto specification = room.directory;
-    if (!room.name.empty())
-        specification += "#" + room.name;
-    arguments.insert(arguments.end(), {"--room", specification});
+    arguments.insert(arguments.end(),
+                     {"--room", getForwardedRoomSpecification(room)});
 }
 
 // iac usually lives in ~/.local/bin, which non-login remote shells
@@ -76,6 +70,20 @@ int runSsh(eacp::Processes::ProcessOptions options)
     return result.exitCode;
 }
 } // namespace
+
+// getRoomDirectory() expands the leading ~ on the remote side.
+std::string getForwardedRoomSpecification(const Room& room)
+{
+    auto specification = room.directory;
+    if (specification.empty())
+    {
+        specification = std::string {homeRelativePrefix}
+                        + std::string {defaultStoreDirectoryName};
+    }
+    if (!room.name.empty())
+        specification += "#" + room.name;
+    return specification;
+}
 
 std::string getShortHostname()
 {

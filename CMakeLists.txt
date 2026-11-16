@@ -92,6 +92,7 @@ add_library(iacCore STATIC
         Source/ComposeLine.cpp
         Source/EditorKeys.cpp
         Source/HelpCommand.cpp
+        Source/HubConfiguration.cpp
         Source/Message.cpp
         Source/MonitorCommand.cpp
         Source/Publish.cpp

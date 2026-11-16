@@ -3,6 +3,7 @@ add_executable(iacTests
         ChatSessionTests.cpp
         CommandLineTests.cpp
         ComposeLineTests.cpp
+        HubConfigurationTests.cpp
         MessageTests.cpp
         PublishTests.cpp)
 target_link_libraries(iacTests PRIVATE NanoTest NanoTestMain iacCore)

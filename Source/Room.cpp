@@ -64,7 +64,7 @@ eacp::FilePath getRoomDirectory(const Room& room)
 {
     const auto& directory = room.directory;
     if (directory.empty())
-        return eacp::FilePath::homeDirectory() / ".iac";
+        return eacp::FilePath::homeDirectory() / defaultStoreDirectoryName;
     if (directory == "~")
         return eacp::FilePath::homeDirectory();
     if (directory.starts_with(homeRelativePrefix))

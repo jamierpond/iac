@@ -5,9 +5,12 @@
 // over ssh to the iac there.
 
 #include "Commands.h"
+#include "HubConfiguration.h"
 #include "Platform.h"
+#include "RemoteRoom.h"
 #include "UsageLog.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <filesystem>
 #include <iterator>
@@ -20,6 +23,7 @@ namespace iac
 namespace
 {
 constexpr auto invalidRoomNameExitCode = 2;
+constexpr auto unreadableConfigurationFileExitCode = 1;
 
 std::string getDefaultSender()
 {
@@ -40,37 +44,75 @@ std::string getCurrentDirectory()
     return eacp::FilePath {path}.str();
 }
 
-Room readRoomFromEnvironment()
+// On the hub itself the configured "user@host:" names this machine, so its
+// store is read directly rather than over ssh to itself.
+Room readHubRoomForThisMachine()
+{
+    auto hub = readHubRoomFromConfigurationFile(getConfigurationFilePath());
+    if (!hub)
+        return {};
+    if (isHubThisMachine(*hub, getShortHostname()))
+        hub->sshTarget.clear();
+    return *hub;
+}
+
+Room readDefaultRoom()
 {
     const auto specification = eacp::getEnvValue("IAC_DIR");
     if (specification.empty())
-        return {};
+        return readHubRoomForThisMachine();
     return parseRoomSpecification(specification);
 }
 
-// A bare '#name' picks a room within the store IAC_DIR already names, so
-// agents keep the store in the environment and hop rooms per command; anything
-// else is a full spec.
-void applyRoomArgument(Room& room, const std::string& specification)
+bool isFullRoomSpecification(const std::string& specification)
 {
-    if (specification.starts_with('#'))
-        room.name = specification.substr(1);
-    else
-        room = parseRoomSpecification(specification);
+    return !specification.starts_with('#');
 }
 
-void takeRoomArguments(std::vector<std::string>& args, Room& room)
+// A bare '#name' picks a room within the store IAC_DIR or the hub already
+// names, so agents keep the store in the environment and hop rooms per
+// command; anything else is a full spec.
+void applyRoomArgument(Room& room, const std::string& specification)
 {
+    if (isFullRoomSpecification(specification))
+        room = parseRoomSpecification(specification);
+    else
+        room.name = specification.substr(1);
+}
+
+bool hasFullRoomSpecification(const std::vector<std::string>& specifications)
+{
+    return std::any_of(
+        specifications.begin(), specifications.end(), isFullRoomSpecification);
+}
+
+std::vector<std::string> takeRoomSpecifications(std::vector<std::string>& args)
+{
+    auto specifications = std::vector<std::string> {};
     for (auto it = args.begin(); it != args.end();)
     {
         if (*it == "--room" && std::next(it) != args.end())
         {
-            applyRoomArgument(room, *std::next(it));
+            specifications.push_back(*std::next(it));
             it = args.erase(it, std::next(it, 2));
             continue;
         }
         ++it;
     }
+    return specifications;
+}
+
+// A full --room spec replaces the default store, so the configuration file
+// is not read and a broken one cannot block '--room ~/.iac'.
+Room takeRoomFromArgumentsOrDefault(std::vector<std::string>& args)
+{
+    const auto specifications = takeRoomSpecifications(args);
+    auto room = Room {};
+    if (!hasFullRoomSpecification(specifications))
+        room = readDefaultRoom();
+    for (const auto& specification: specifications)
+        applyRoomArgument(room, specification);
+    return room;
 }
 
 bool isPersonAtTerminal()
@@ -121,8 +163,16 @@ int main(int argc, char* argv[])
 {
     auto args = iac::commandLineArguments(argc, argv);
 
-    auto room = iac::readRoomFromEnvironment();
-    iac::takeRoomArguments(args, room);
+    auto room = iac::Room {};
+    try
+    {
+        room = iac::takeRoomFromArgumentsOrDefault(args);
+    }
+    catch (const iac::ConfigurationFileError& error)
+    {
+        std::fprintf(stderr, "iac: %s\n", error.what());
+        return iac::unreadableConfigurationFileExitCode;
+    }
     if (!room.name.empty() && !iac::isValidRoomName(room.name))
     {
         std::fprintf(stderr,

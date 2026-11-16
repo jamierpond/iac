@@ -25,6 +25,9 @@ constexpr auto defaultRoomDocumentName = std::string_view {"messages"};
 constexpr auto namedRoomDocumentPrefix = std::string_view {"room-"};
 constexpr auto documentFileExtension = std::string_view {".json"};
 
+// The store used when a room names no directory, under the home directory.
+constexpr auto defaultStoreDirectoryName = std::string_view {".iac"};
+
 Room parseRoomSpecification(const std::string& specification);
 
 bool isValidRoomName(const std::string& name);
