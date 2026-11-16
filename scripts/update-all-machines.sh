@@ -36,6 +36,8 @@ run_on_machine() {
 
 install_commands='
 set -eu
+# just and cmake come from nix on the Linux hub, and its login zsh does not add them.
+PATH="$HOME/.nix-profile/bin:$PATH"
 cd ~/projects/iac
 if [ -n "$(git status --porcelain)" ]; then
     echo "uncommitted changes in ~/projects/iac; not building" >&2
