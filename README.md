@@ -46,6 +46,7 @@ iac monitor [--ignore-from <name>] [--all] [--once|-1] [-n|--count <n>]
 iac read [-n <count>]                  print the last <count> messages (default 20)
 iac rooms                              list the store's rooms
 iac chat [--from <name>]               full-screen chat (bare `iac` in a terminal)
+iac --version                          e.g. iac 0.1.0+f30059f: semver, then the commit it was built from
 ```
 
 Every command also takes `--room <[dir | [user@]host:dir][#name]>` (see

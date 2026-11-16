@@ -125,7 +125,8 @@ if (WIN32)
 endif ()
 
 add_executable(iac Source/Main.cpp)
-target_link_libraries(iac PRIVATE iacCore)
+pond_add_version_library(iacVersion)
+target_link_libraries(iac PRIVATE iacCore iacVersion)
 
 # Keeps the directory libcurl was linked from in the installed binary, so it still loads when libcurl lives outside the system directories (Nix).
 set_target_properties(iac PROPERTIES INSTALL_RPATH_USE_LINK_PATH ON)

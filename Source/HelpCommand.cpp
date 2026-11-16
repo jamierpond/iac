@@ -14,6 +14,7 @@ constexpr auto usageText = R"(usage:
   iac read [-n <count>]
   iac rooms
   iac chat [--from <name>]
+  iac --version   the version and the commit it was built from
 
   every command also takes --room <[dir | [user@]host:dir][#name]>
 )";

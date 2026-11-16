@@ -10,6 +10,8 @@
 #include "RemoteRoom.h"
 #include "UsageLog.h"
 
+#include <PondVersion.h>
+
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
@@ -120,6 +122,17 @@ bool isPersonAtTerminal()
     return stdinIsTty() && stdoutIsTty();
 }
 
+bool isVersionRequest(const std::vector<std::string>& args)
+{
+    return args.size() == 1 && args.front() == "--version";
+}
+
+int printVersion()
+{
+    std::printf("iac %s\n", pond::getVersionString().c_str());
+    return 0;
+}
+
 const auto helpCommandNames = std::set<std::string> {"help", "--help", "-h"};
 
 int runPublishCommandWithEnvironmentDefaults(const Room& room,
@@ -162,6 +175,9 @@ int runAndLogCommand(const Room& room, const std::vector<std::string>& args)
 int main(int argc, char* argv[])
 {
     auto args = iac::commandLineArguments(argc, argv);
+
+    if (iac::isVersionRequest(args))
+        return iac::printVersion();
 
     auto room = iac::Room {};
     try
