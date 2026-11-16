@@ -16,7 +16,8 @@ ChatRooms::RoomState& ChatRooms::getOrAddRoom(const std::string& name)
     return rooms[name];
 }
 
-void ChatRooms::addRoomWithReadHistory(const std::string& name, const Messages& history)
+void ChatRooms::addRoomWithReadHistory(const std::string& name,
+                                       const Messages& history)
 {
     auto& room = getOrAddRoom(name);
     room.messages = history;
@@ -26,14 +27,8 @@ void ChatRooms::addRoomWithReadHistory(const std::string& name, const Messages& 
 void ChatRooms::updateRoomMessages(const std::string& name, const Messages& messages)
 {
     auto& room = getOrAddRoom(name);
-    const auto isActiveRoom = name == activeRoomName;
-
-    // Scrolled back, the view stays on the same messages as new ones arrive below.
-    if (isActiveRoom && messagesBelowView > 0)
-        messagesBelowView += room.readCursor.countNewMessages(messages);
-
     room.messages = messages;
-    if (isActiveRoom)
+    if (name == activeRoomName)
         room.readCursor.markAllSeen(messages);
 }
 
@@ -42,17 +37,20 @@ void ChatRooms::selectRoom(const std::string& name)
     activeRoomName = name;
     auto& room = getOrAddRoom(name);
     room.readCursor.markAllSeen(room.messages);
-    messagesBelowView = 0;
 }
 
-void ChatRooms::selectNeighbouringRoom(int step)
+void ChatRooms::selectRoomByOffset(int offset)
 {
     const auto names = getRoomNames();
-    const auto current = std::find(names.begin(), names.end(), activeRoomName);
-    const auto size = static_cast<int>(names.size());
-    const auto index = static_cast<int>(std::distance(names.begin(), current));
-    const auto wrapped = ((index + step) % size + size) % size;
-    selectRoom(names[static_cast<std::size_t>(wrapped)]);
+    const auto lastIndex = static_cast<int>(names.size()) - 1;
+    const auto index = std::clamp(getActiveRoomIndex() + offset, 0, lastIndex);
+    selectRoom(names[static_cast<std::size_t>(index)]);
+}
+
+int ChatRooms::getActiveRoomIndex() const
+{
+    const auto active = rooms.find(activeRoomName);
+    return static_cast<int>(std::distance(rooms.begin(), active));
 }
 
 const std::string& ChatRooms::getActiveRoomName() const
@@ -79,28 +77,6 @@ std::size_t ChatRooms::getUnreadCount(const std::string& name) const
 const Messages& ChatRooms::getActiveRoomMessages() const
 {
     return rooms.at(activeRoomName).messages;
-}
-
-std::size_t ChatRooms::getMessagesBelowView() const
-{
-    return messagesBelowView;
-}
-
-void ChatRooms::scrollToOlderMessages(std::size_t count)
-{
-    const auto messageCount = getActiveRoomMessages().size();
-    const auto furthest = messageCount > 0 ? messageCount - 1 : std::size_t {0};
-    messagesBelowView = std::min(messagesBelowView + count, furthest);
-}
-
-void ChatRooms::scrollToNewerMessages(std::size_t count)
-{
-    messagesBelowView = messagesBelowView > count ? messagesBelowView - count : 0;
-}
-
-void ChatRooms::scrollToNewestMessage()
-{
-    messagesBelowView = 0;
 }
 
 std::string getRoomLabel(const std::string& name)

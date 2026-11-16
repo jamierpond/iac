@@ -7,27 +7,29 @@
 
 namespace iac
 {
-enum class ComposeActionKind
+enum class ChatCommandKind
 {
     nothing,
-    sendMessage,
     joinRoom,
-    listRooms,
+    showHelp,
     quit,
     showError
 };
 
-// What the text typed into chat's prompt asks for. `argument` is the message
-// for sendMessage, the room name (no '#') for joinRoom, the explanation for showError.
-struct ComposeAction
+// What a line typed after ':' asks for. `argument` is the room name (no '#')
+// for joinRoom, the explanation for showError.
+struct ChatCommandLineAction
 {
-    ComposeActionKind kind = ComposeActionKind::nothing;
+    ChatCommandKind kind = ChatCommandKind::nothing;
     std::string argument;
 };
 
-// "/join #name", "/rooms" and "/quit" are commands; anything else is a message.
-// Surrounding blank lines and spaces are dropped; "//text" sends "/text".
-ComposeAction parseComposedText(const std::string& text);
+// "join #name", "help", and "q", "quit", "q!" or "quit!".
+ChatCommandLineAction parseChatCommandLine(const std::string& line);
+
+// The compose box's text as it is sent: without surrounding blank lines and
+// spaces; "" when there is nothing to send.
+std::string trimComposedMessage(const std::string& text);
 
 struct MentionRange
 {

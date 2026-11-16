@@ -29,8 +29,8 @@ auto tComposePublishes = test(
     const auto store = testing::TemporaryStore {};
     auto session = ChatSession {store.getRoom(), {"alice", "/work"}};
 
-    const auto result = session.submitComposedText("hello @iac-chat\n");
-    check(result.kind == ComposeActionKind::sendMessage);
+    const auto result = session.sendComposedMessage("hello @iac-chat\n");
+    check(result.wasSent);
     check(!result.isError);
 
     const auto messages = readRoom(store.getRoom());
@@ -43,15 +43,14 @@ auto tComposePublishes = test(
 };
 
 auto tJoinThenPublish =
-    test("ChatSession/after /join, messages go to that room only") = []
+    test("ChatSession/after joining a room, messages go to that room only") = []
 {
     const auto store = testing::TemporaryStore {};
     auto session = ChatSession {store.getRoom(), {"alice", {}}};
 
-    check(session.submitComposedText("/join #design").kind
-          == ComposeActionKind::joinRoom);
+    session.getRooms().selectRoom("design");
     check(session.getRooms().getActiveRoomName() == "design");
-    session.submitComposedText("in design");
+    session.sendComposedMessage("in design");
 
     check(readRoom(store.getRoom("design")).size() == 1);
     check(readRoom(store.getRoom()).empty());
@@ -87,12 +86,13 @@ auto tNewRoomFound = test(
     check(session.getRooms().getUnreadCount("fresh") == 1);
 };
 
-auto tErrorsDontPublish =
-    test("ChatSession/a bad command reports an error and publishes nothing") = []
+auto tBlankSendsNothing =
+    test("ChatSession/blank text in the compose box publishes nothing") = []
 {
     const auto store = testing::TemporaryStore {};
     auto session = ChatSession {store.getRoom(), {"alice", {}}};
-    const auto result = session.submitComposedText("/nope");
-    check(result.isError);
+    const auto result = session.sendComposedMessage(" \n ");
+    check(!result.wasSent);
+    check(!result.isError);
     check(readRoom(store.getRoom()).empty());
 };

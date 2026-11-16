@@ -10,8 +10,8 @@
 namespace iac
 {
 // What chat knows about a store's rooms, without any drawing or files: each
-// room's messages, how many arrived unseen, which room is open and how far
-// back it is scrolled. A room's name is "" for the default room.
+// room's messages, how many arrived unseen and which room is open. A room's
+// name is "" for the default room.
 class ChatRooms
 {
 public:
@@ -26,23 +26,18 @@ public:
     void updateRoomMessages(const std::string& name, const Messages& messages);
 
     // Opens the room, marking it read; a room nobody has published in yet is
-    // added empty. Scrolling starts back at the newest message.
+    // added empty.
     void selectRoom(const std::string& name);
 
-    // Steps through the room list, wrapping at either end.
-    void selectNeighbouringRoom(int step);
+    // Opens the room `offset` places down the list (up when negative),
+    // stopping at either end, as j/k do in DiffView's file tree.
+    void selectRoomByOffset(int offset);
 
     const std::string& getActiveRoomName() const;
+    int getActiveRoomIndex() const;
     std::vector<std::string> getRoomNames() const;
     std::size_t getUnreadCount(const std::string& name) const;
     const Messages& getActiveRoomMessages() const;
-
-    // How many of the open room's newest messages are below the view; 0 shows
-    // the newest and keeps following new ones.
-    std::size_t getMessagesBelowView() const;
-    void scrollToOlderMessages(std::size_t count);
-    void scrollToNewerMessages(std::size_t count);
-    void scrollToNewestMessage();
 
 private:
     struct RoomState
@@ -55,7 +50,6 @@ private:
 
     std::map<std::string, RoomState> rooms;
     std::string activeRoomName;
-    std::size_t messagesBelowView = 0;
 };
 
 // "#name", or "(default)" for the default room.

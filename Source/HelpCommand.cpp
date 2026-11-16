@@ -59,12 +59,17 @@ commands:
               -n <count>      how many to print (default 20)
   rooms     List the store's rooms, default room first.
   chat      Full-screen chat for a person; bare 'iac' in a terminal
-            opens it. Rooms down the left with unread counts, the
-            open room live in the middle, a vim prompt at the bottom.
-            Enter sends; /join #room, /rooms, /quit; Tab or ctrl-n
-            next room, shift-Tab or ctrl-p previous; PgUp/PgDn
-            scroll; Esc to vim normal mode; ctrl-c quits. A remote
-            store runs the screen on its host over ssh -t.
+            opens it, laid out and keyed like dv: rooms on the left
+            with unread counts, the open room's messages on the right.
+            j/k move (the room list opens the room under the cursor),
+            gg/G top/bottom, ctrl-d/ctrl-u half a page; h/l or Tab
+            switch between rooms and messages; Enter or l opens a room.
+            c, i or Enter in the messages writes a message in a vim
+            box: Enter is a new line, ctrl-s or :wq sends and closes,
+            :w sends, :q! drops it, Esc in normal mode leaves it and
+            keeps the text. :join #room opens or creates a room; q, :q
+            or ctrl-c quits; F1 lists the keys. A remote store runs
+            the screen on its host over ssh -t.
               --from <name>   sender name (default: jamie)
 
 rooms:

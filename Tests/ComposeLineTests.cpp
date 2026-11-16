@@ -5,37 +5,35 @@
 using namespace nano;
 using namespace iac;
 
-auto tPlainMessage = test("ComposeLine/plain text is a message, trimmed") = []
+auto tMessageTrimmed =
+    test("ComposeLine/a composed message is sent trimmed; blank is nothing") = []
 {
-    const auto action = parseComposedText("  hello there \n");
-    check(action.kind == ComposeActionKind::sendMessage);
-    check(action.argument == "hello there");
+    check(trimComposedMessage("  hello there \n") == "hello there");
+    check(trimComposedMessage("/etc is a path") == "/etc is a path");
+    check(trimComposedMessage(" \n ").empty());
 };
 
-auto tBlank = test("ComposeLine/blank text does nothing") = []
+auto tJoin =
+    test("ComposeLine/:join takes #name or name, and rejects bad names") = []
 {
-    check(parseComposedText(" \n ").kind == ComposeActionKind::nothing);
+    check(parseChatCommandLine("join #db-design").argument == "db-design");
+    check(parseChatCommandLine("join ops").kind == ChatCommandKind::joinRoom);
+    check(parseChatCommandLine("join #Bad Name").kind == ChatCommandKind::showError);
+    check(parseChatCommandLine("join").kind == ChatCommandKind::showError);
 };
 
-auto tJoin = test("ComposeLine/join takes #name or name, and rejects bad names") = []
+auto tCommands =
+    test("ComposeLine/:q, :quit, :help, unknown and blank command lines") = []
 {
-    check(parseComposedText("/join #db-design").argument == "db-design");
-    check(parseComposedText("/join ops").kind == ComposeActionKind::joinRoom);
-    check(parseComposedText("/join #Bad Name").kind == ComposeActionKind::showError);
-    check(parseComposedText("/join").kind == ComposeActionKind::showError);
+    check(parseChatCommandLine("q").kind == ChatCommandKind::quit);
+    check(parseChatCommandLine("quit!").kind == ChatCommandKind::quit);
+    check(parseChatCommandLine("help").kind == ChatCommandKind::showHelp);
+    check(parseChatCommandLine("joinx").kind == ChatCommandKind::showError);
+    check(parseChatCommandLine("  ").kind == ChatCommandKind::nothing);
 };
 
-auto tCommands = test("ComposeLine/rooms, quit, unknown commands and // escapes") = []
-{
-    check(parseComposedText("/rooms").kind == ComposeActionKind::listRooms);
-    check(parseComposedText("/quit").kind == ComposeActionKind::quit);
-    check(parseComposedText("/joinx").kind == ComposeActionKind::showError);
-    const auto escaped = parseComposedText("//etc is a path");
-    check(escaped.kind == ComposeActionKind::sendMessage);
-    check(escaped.argument == "/etc is a path");
-};
-
-auto tMentions = test("ComposeLine/mentions are @role, not emails, without trailing dots") = []
+auto tMentions =
+    test("ComposeLine/mentions are @role, not emails, without trailing dots") = []
 {
     const auto text = std::string {"@iac-chat see a@b.com and @dv.review."};
     const auto mentions = findMentions(text);

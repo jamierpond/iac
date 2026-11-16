@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ChatRooms.h"
-#include "ComposeLine.h"
 #include "Room.h"
 
 #include <map>
@@ -17,10 +16,11 @@ struct ChatIdentity
     std::string cwd;
 };
 
-// What submitting the prompt did, for the screen to act on: quit, or show `status`.
-struct ChatSubmitResult
+// What sending the compose box did: whether a message went out, and what to
+// say about it on the status line.
+struct ChatSendResult
 {
-    ComposeActionKind kind = ComposeActionKind::nothing;
+    bool wasSent = false;
     std::string status;
     bool isError = false;
 };
@@ -36,7 +36,8 @@ public:
     void reloadRoomList();
     void reloadRoom(const std::string& name);
 
-    ChatSubmitResult submitComposedText(const std::string& text);
+    // Publishes the box's text, trimmed, to the open room; blank text sends nothing.
+    ChatSendResult sendComposedMessage(const std::string& text);
 
     ChatRooms& getRooms();
     const ChatRooms& getRooms() const;
@@ -46,8 +47,6 @@ public:
 
 private:
     const Messages& readRoomMessages(const std::string& name);
-    ChatSubmitResult publishToActiveRoom(const std::string& text);
-    ChatSubmitResult describeRooms() const;
 
     Room store;
     ChatIdentity identity;

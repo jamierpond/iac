@@ -85,6 +85,9 @@ endif ()
 # Everything but main(), so the tests link the same code the binary runs.
 add_library(iacCore STATIC
         Source/ChatCommand.cpp
+        Source/ChatInput.cpp
+        Source/ChatKeymap.cpp
+        Source/ChatMessagePane.cpp
         Source/ChatRooms.cpp
         Source/ChatScreen.cpp
         Source/ChatSession.cpp
@@ -93,6 +96,7 @@ add_library(iacCore STATIC
         Source/EditorKeys.cpp
         Source/HelpCommand.cpp
         Source/HubConfiguration.cpp
+        Source/LineEdit.cpp
         Source/Message.cpp
         Source/MessageAddressing.cpp
         Source/MonitorCommand.cpp

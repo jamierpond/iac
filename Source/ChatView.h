@@ -1,25 +1,14 @@
 #pragma once
 
-#include "ChatSession.h"
-
-#include <VimEditor.h>
+#include "ChatInput.h"
 
 #include <ftxui/dom/elements.hpp>
 
-#include <string>
-
 namespace iac
 {
-// The line under the prompt: what the last command said, or the key hints.
-struct ChatStatus
-{
-    std::string text;
-    bool isError = false;
-};
-
-// The whole chat screen: rooms down the left with unread counts, the open
-// room's messages, the vim prompt and the status line.
-ftxui::Element renderChat(const ChatSession& session,
-                          vim::Editor& editor,
-                          const ChatStatus& status);
+// The whole chat screen in DiffView's layout: the rooms list where dv has its
+// file tree, the open room's messages where dv has the diff, the compose box
+// under them while writing, and dv's status line. Sizes the panes to the
+// terminal first, so the input's cursors stay on screen.
+ftxui::Element renderChat(ChatInput& input);
 } // namespace iac

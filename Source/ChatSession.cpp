@@ -1,5 +1,6 @@
 #include "ChatSession.h"
 
+#include "ComposeLine.h"
 #include "Publish.h"
 #include "StoreRooms.h"
 
@@ -30,7 +31,8 @@ const Messages& ChatSession::readRoomMessages(const std::string& name)
     if (found == documents.end())
     {
         const auto room = getRoom(name);
-        auto document = openRoomDatabase(room).document<Messages>(getRoomDocumentName(room));
+        auto document =
+            openRoomDatabase(room).document<Messages>(getRoomDocumentName(room));
         found = documents.emplace(name, std::move(document)).first;
     }
     return found->second.peek();
@@ -51,45 +53,18 @@ void ChatSession::reloadRoom(const std::string& name)
     rooms.updateRoomMessages(name, readRoomMessages(name));
 }
 
-ChatSubmitResult ChatSession::publishToActiveRoom(const std::string& text)
+ChatSendResult ChatSession::sendComposedMessage(const std::string& text)
 {
+    const auto trimmed = trimComposedMessage(text);
+    if (trimmed.empty())
+        return {};
     const auto& name = rooms.getActiveRoomName();
-    const auto message = Message {identity.sender, text, identity.cwd, getMillisecondsSinceEpoch()};
+    const auto message = Message {
+        identity.sender, trimmed, identity.cwd, getMillisecondsSinceEpoch()};
     if (!publishToLocalRoom(getRoom(name), message))
-        return {ComposeActionKind::sendMessage, "could not write to " + getStoreLabel(), true};
+        return {false, "could not write to " + getStoreLabel(), true};
     reloadRoom(name);
-    rooms.scrollToNewestMessage();
-    return {ComposeActionKind::sendMessage, {}, false};
-}
-
-ChatSubmitResult ChatSession::describeRooms() const
-{
-    auto list = std::string {};
-    for (const auto& name: rooms.getRoomNames())
-        list += (list.empty() ? "" : "  ") + getRoomLabel(name);
-    return {ComposeActionKind::listRooms, list, false};
-}
-
-ChatSubmitResult ChatSession::submitComposedText(const std::string& text)
-{
-    const auto action = parseComposedText(text);
-    switch (action.kind)
-    {
-        case ComposeActionKind::sendMessage:
-            return publishToActiveRoom(action.argument);
-        case ComposeActionKind::joinRoom:
-            rooms.selectRoom(action.argument);
-            reloadRoom(action.argument);
-            return {action.kind, "joined " + getRoomLabel(action.argument), false};
-        case ComposeActionKind::listRooms:
-            return describeRooms();
-        case ComposeActionKind::showError:
-            return {action.kind, action.argument, true};
-        case ComposeActionKind::quit:
-        case ComposeActionKind::nothing:
-            break;
-    }
-    return {action.kind, {}, false};
+    return {true, {}, false};
 }
 
 ChatRooms& ChatSession::getRooms()

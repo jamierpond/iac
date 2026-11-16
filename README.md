@@ -110,12 +110,17 @@ store won.
 ## Chat
 
 `iac chat` (or bare `iac` in a terminal) is the room as a full-screen
-terminal UI for a person: rooms down the left with unread counts, the open
-room's messages arriving live, and a vim prompt at the bottom (the same
-editor as dv's comment box). Enter sends as `jamie` (`--from` changes it),
-`@role` mentions are highlighted, `/join #name` opens a room, `/rooms` lists
-them, `/quit` or ctrl-c quits. Tab / ctrl-n and shift-Tab / ctrl-p switch
-rooms, PgUp/PgDn scroll back. With a remote store (`--room user@host:`) the
+terminal UI for a person, laid out and keyed like dv: the rooms list where
+dv has its file tree (unread counts as `●3`), the open room's messages where
+dv has the diff, arriving live. It opens on the rooms list. `j`/`k` move
+(in the list, onto the next room, which opens it), `gg`/`G`, ctrl-d/ctrl-u
+half a page, `h`/`l` or Tab switch panes, Enter or `l` opens a room. `c`,
+`i`, or Enter in the messages opens a vim box (the editor of dv's comment
+box) to write as `jamie` (`--from` changes it): Enter is a new line, ctrl-s
+or `:wq` sends and closes, `:w` sends, `:q!` drops the text, Esc in normal
+mode leaves the box and keeps the text. `:join #name` opens or creates a
+room, `q`, `:q` or ctrl-c quits, F1 lists the keys. `@role` mentions are
+highlighted. With a remote store (`--room user@host:`) the
 screen runs on that host over `ssh -t`, so the host's iac needs `chat` too.
 Usage is logged per launch in `pond/iac/logs`.
 

@@ -24,7 +24,8 @@ auto tHistoryIsRead = test("ChatRooms/history present at open is not unread") = 
     check(rooms.getUnreadCount("design") == 0);
 };
 
-auto tUnreadInOtherRooms = test("ChatRooms/messages in another room count as unread until opened") = []
+auto tUnreadInOtherRooms =
+    test("ChatRooms/messages in another room count as unread until opened") = []
 {
     auto messages = Messages {};
     auto rooms = ChatRooms {""};
@@ -40,7 +41,8 @@ auto tUnreadInOtherRooms = test("ChatRooms/messages in another room count as unr
     check(rooms.getActiveRoomName() == "design");
 };
 
-auto tActiveRoomStaysRead = test("ChatRooms/messages arriving in the open room are read at once") = []
+auto tActiveRoomStaysRead =
+    test("ChatRooms/messages arriving in the open room are read at once") = []
 {
     auto messages = Messages {};
     auto rooms = ChatRooms {""};
@@ -50,7 +52,8 @@ auto tActiveRoomStaysRead = test("ChatRooms/messages arriving in the open room a
     check(rooms.getActiveRoomMessages().size() == 1);
 };
 
-auto tNewRoomAllUnread = test("ChatRooms/a room created after opening has everything unread") = []
+auto tNewRoomAllUnread =
+    test("ChatRooms/a room created after opening has everything unread") = []
 {
     auto messages = Messages {};
     addMessage(messages, "001", "first in a new room");
@@ -59,7 +62,8 @@ auto tNewRoomAllUnread = test("ChatRooms/a room created after opening has everyt
     check(rooms.getUnreadCount("fresh") == 1);
 };
 
-auto tLeavingKeepsCount = test("ChatRooms/after leaving a room, only later messages are unread") = []
+auto tLeavingKeepsCount =
+    test("ChatRooms/after leaving a room, only later messages are unread") = []
 {
     auto messages = Messages {};
     addMessage(messages, "001", "seen");
@@ -72,22 +76,29 @@ auto tLeavingKeepsCount = test("ChatRooms/after leaving a room, only later messa
     check(rooms.getUnreadCount("design") == 1);
 };
 
-auto tRoomOrderAndCycling = test("ChatRooms/rooms list default first, sorted, and cycling wraps") = []
+auto tRoomOrderAndOffsets = test(
+    "ChatRooms/rooms list default first, sorted, and moving stops at either end") =
+    []
 {
     auto rooms = ChatRooms {""};
     rooms.addRoomWithReadHistory("zeta", {});
     rooms.addRoomWithReadHistory("alpha", {});
     check(rooms.getRoomNames() == std::vector<std::string> {"", "alpha", "zeta"});
 
-    rooms.selectNeighbouringRoom(1);
+    rooms.selectRoomByOffset(1);
     check(rooms.getActiveRoomName() == "alpha");
-    rooms.selectNeighbouringRoom(-2);
+    check(rooms.getActiveRoomIndex() == 1);
+
+    constexpr auto pastTheEnd = 5;
+    rooms.selectRoomByOffset(pastTheEnd);
     check(rooms.getActiveRoomName() == "zeta");
-    rooms.selectNeighbouringRoom(1);
+    rooms.selectRoomByOffset(-pastTheEnd);
     check(rooms.getActiveRoomName().empty());
+    check(rooms.getActiveRoomIndex() == 0);
 };
 
-auto tMessagesInKeyOrder = test("ChatRooms/messages are kept in publish (key) order") = []
+auto tMessagesInKeyOrder =
+    test("ChatRooms/messages are kept in publish (key) order") = []
 {
     auto messages = Messages {};
     addMessage(messages, "003", "third");
@@ -99,28 +110,4 @@ auto tMessagesInKeyOrder = test("ChatRooms/messages are kept in publish (key) or
     for (const auto& [key, message]: rooms.getActiveRoomMessages())
         texts.push_back(message.text);
     check(texts == std::vector<std::string> {"first", "second", "third"});
-};
-
-auto tScrollback = test("ChatRooms/scrollback clamps, holds its place as messages arrive, and resets on room change") = []
-{
-    auto messages = Messages {};
-    for (const auto* key: {"001", "002", "003", "004"})
-        addMessage(messages, key, key);
-    auto rooms = ChatRooms {""};
-    rooms.updateRoomMessages("", messages);
-
-    constexpr auto farBack = std::size_t {10};
-    rooms.scrollToOlderMessages(farBack);
-    check(rooms.getMessagesBelowView() == 3);
-
-    rooms.scrollToNewerMessages(1);
-    check(rooms.getMessagesBelowView() == 2);
-
-    addMessage(messages, "005", "new");
-    rooms.updateRoomMessages("", messages);
-    check(rooms.getMessagesBelowView() == 3);
-
-    rooms.selectRoom("other");
-    rooms.selectRoom("");
-    check(rooms.getMessagesBelowView() == 0);
 };

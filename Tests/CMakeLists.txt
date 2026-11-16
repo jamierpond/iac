@@ -1,9 +1,13 @@
 add_executable(iacTests
+        ChatInputTests.cpp
+        ChatKeymapTests.cpp
+        ChatMessagePaneTests.cpp
         ChatRoomsTests.cpp
         ChatSessionTests.cpp
         CommandLineTests.cpp
         ComposeLineTests.cpp
         HubConfigurationTests.cpp
+        LineEditTests.cpp
         MessageAddressingTests.cpp
         MessageTests.cpp
         PublishTests.cpp
