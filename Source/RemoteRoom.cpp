@@ -9,6 +9,9 @@ namespace iac
 namespace
 {
 constexpr auto sshLaunchFailedExitCode = 127;
+constexpr auto sshConnectionFailedExitCode = 255;
+constexpr auto sshConnectTimeoutSeconds = 5;
+constexpr auto sshServerAliveIntervalSeconds = 30;
 constexpr auto homeRelativePrefix = std::string_view {"~/"};
 
 std::string shellQuote(const std::string& text)
@@ -48,7 +51,9 @@ eacp::Processes::ProcessOptions makeSshOptions(const Room& room,
     addForwardedRoomArgument(room, arguments);
     auto options = eacp::Processes::ProcessOptions {};
     options.executable = "ssh";
-    options.arguments = {terminalFlag, "-o", "ServerAliveInterval=30"};
+    options.arguments = {terminalFlag};
+    for (auto& option: getSshConnectionOptions())
+        options.arguments.push_back(std::move(option));
     if (!stdinIsTty())
         options.arguments.add({"-o", "BatchMode=yes"});
     options.arguments.push_back(room.sshTarget);
@@ -59,7 +64,9 @@ eacp::Processes::ProcessOptions makeSshOptions(const Room& room,
     return options;
 }
 
-int runSsh(eacp::Processes::ProcessOptions options)
+// ssh exits 255 for its own failures; iac never exits 255 itself, so this
+// is ssh failing, not the remote iac.
+int runSsh(const Room& room, eacp::Processes::ProcessOptions options)
 {
     const auto result = eacp::Processes::run(std::move(options));
     if (!result.launched)
@@ -67,6 +74,8 @@ int runSsh(eacp::Processes::ProcessOptions options)
         std::fprintf(stderr, "iac: could not run ssh\n");
         return sshLaunchFailedExitCode;
     }
+    if (result.exitCode == sshConnectionFailedExitCode)
+        std::fprintf(stderr, "%s\n", describeUnreachableHost(room).c_str());
     return result.exitCode;
 }
 } // namespace
@@ -85,6 +94,22 @@ std::string getForwardedRoomSpecification(const Room& room)
     return specification;
 }
 
+std::vector<std::string> getSshConnectionOptions()
+{
+    return {"-o",
+            "ConnectTimeout=" + std::to_string(sshConnectTimeoutSeconds),
+            "-o",
+            "ServerAliveInterval=" + std::to_string(sshServerAliveIntervalSeconds)};
+}
+
+std::string describeUnreachableHost(const Room& room)
+{
+    return "iac: ssh to " + room.sshTarget + " failed (no connection within "
+           + std::to_string(sshConnectTimeoutSeconds)
+           + " s, a refused login, or a dropped link); the command did not finish"
+             " on that host. This machine's own room is reached with --room ~/.iac.";
+}
+
 std::string getShortHostname()
 {
     auto host = rawHostname();
@@ -100,11 +125,11 @@ std::string getShortHostname()
 // to its own environment.
 int runOverSsh(const Room& room, std::vector<std::string> arguments)
 {
-    return runSsh(makeSshOptions(room, std::move(arguments), "-T"));
+    return runSsh(room, makeSshOptions(room, std::move(arguments), "-T"));
 }
 
 int runOverSshWithTerminal(const Room& room, std::vector<std::string> arguments)
 {
-    return runSsh(makeSshOptions(room, std::move(arguments), "-t"));
+    return runSsh(room, makeSshOptions(room, std::move(arguments), "-t"));
 }
 } // namespace iac

@@ -87,6 +87,11 @@ rooms:
   there (~/.local/bin or PATH), with key-based ssh auth — outside
   a terminal, BatchMode is set and password prompts cannot be
   answered. Remote publishes record their origin as 'host:~/dir'.
+  When ssh cannot connect within 5 seconds, cannot log in, or
+  loses the connection, iac prints one line naming the host and
+  exits 255; the command does not run on any other store. A
+  remote monitor exits 255 about 90 seconds after the link drops
+  (three unanswered 30-second keepalives): re-arm it.
 
 for agents:
   Joining from Claude Code, Antigravity, or similar harnesses:

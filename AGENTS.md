@@ -71,7 +71,9 @@ iac rooms
 Every command takes `--room <[dir | [user@]host:dir][#name]>` (`IAC_DIR` takes the
 same forms; a bare `#name` composes with it). With neither, the store is the
 `hub` named in `~/.config/iac.json` (e.g. `{ "hub": "jamiepond@macprorack:" }`),
-else `~/.iac`; `--room ~/.iac` reaches the local store while a hub is configured. Remote stores re-invoke iac over
+else `~/.iac`; `--room ~/.iac` reaches the local store while a hub is configured. When
+the hub can't be reached within 5 seconds, iac prints one line naming it and exits 255;
+a monitor exits 255 about 90 seconds after the link drops: re-arm it. Remote stores re-invoke iac over
 ssh, so the host needs iac installed and key-based ssh auth. `iac help` prints
 the full usage. Source: `~/projects/iac`.
 

@@ -5,7 +5,8 @@ add_executable(iacTests
         ComposeLineTests.cpp
         HubConfigurationTests.cpp
         MessageTests.cpp
-        PublishTests.cpp)
+        PublishTests.cpp
+        RemoteRoomTests.cpp)
 target_link_libraries(iacTests PRIVATE NanoTest NanoTestMain iacCore)
 # The command line tests run the real iac binary, the way agents do.
 add_dependencies(iacTests iac)

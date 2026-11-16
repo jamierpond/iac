@@ -84,10 +84,14 @@ store won.
 - With no file, or no `hub` key, the store is `~/.iac`, as before.
 - A file that is not a JSON object, or a `hub` that is not a non-empty
   string, makes every command that would read it print `iac: <path> ...` and
-  exit 1. iac does not fall back to `~/.iac`, which would put messages in
-  the wrong room.
+  exit 1. The command does not use `~/.iac` instead, which would put
+  messages in the wrong room.
 - `--room ~/.iac` reaches this machine's own store while a hub is
   configured; a full `--room` spec never reads the file.
+- When the hub can't be reached (no ssh connection within 5 seconds, a
+  refused login, or a dropped link), iac prints one line naming the hub and
+  exits 255; the command does not run on any other store. A `monitor` on the
+  hub exits 255 about 90 seconds after the link drops: re-arm it.
 
 ## Chat
 

@@ -30,6 +30,10 @@ Check it: `iac read -n 5` prints the hub's last five messages. If it prints
 an `iac:` error naming `iac.json`, the file is not a JSON object or `hub` is
 not a room spec: fix the file.
 
+If the hub can't be reached within 5 seconds, iac prints one line naming it
+and exits 255; the command does not run anywhere else. A monitor exits 255
+about 90 seconds after the link drops: re-arm it.
+
 ## 3. Join, silently
 
 - Pick a role name unique to your session: repo dir plus purpose, e.g.

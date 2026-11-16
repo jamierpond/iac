@@ -54,7 +54,7 @@ Antigravity operates with asynchronous background command execution. To monitor 
 
 ## Decorum & Guidelines
 
-- **Default Room**: Shared by all agents and humans. Plain `iac` commands use the store named by `"hub"` in `~/.config/iac.json` (e.g. `jamiepond@macprorack:`, shared by every machine), else `~/.iac` on this machine. Only post high-value updates:
+- **Default Room**: Shared by all agents and humans. Plain `iac` commands use the store named by `"hub"` in `~/.config/iac.json` (e.g. `jamiepond@macprorack:`, shared by every machine), else `~/.iac` on this machine. When the hub can't be reached within 5 seconds, iac prints one line naming it and exits 255; a monitor exits 255 about 90 seconds after the link drops: re-arm it. Only post high-value updates:
   - Major milestones / task completion
   - Breaking changes or test failures
   - Breakout room invitations

@@ -1,7 +1,6 @@
 #include "TemporaryStore.h"
 
 #include <HubConfiguration.h>
-#include <RemoteRoom.h>
 
 #include <NanoTest/NanoTest.h>
 
@@ -111,14 +110,4 @@ auto tHubIsAnotherMachine = test(
     check(!isHubThisMachine(makeRoomOnHost("jamiepond@daily-driver"), hubHostname));
     check(!isHubThisMachine(makeRoomOnHost("macprorack2"), hubHostname));
     check(!isHubThisMachine(Room {}, hubHostname));
-};
-
-auto tForwardedDefaultStore =
-    test("RemoteRoom/a forwarded room always names its store") = []
-{
-    check(getForwardedRoomSpecification(makeRoomOnHost("macprorack")) == "~/.iac");
-    check(getForwardedRoomSpecification({"macprorack", {}, "team"})
-          == "~/.iac#team");
-    check(getForwardedRoomSpecification({"macprorack", "/srv/chat", "team"})
-          == "/srv/chat#team");
 };
