@@ -380,10 +380,8 @@ Element renderStatusHint(ChatInput& input)
     if (isStatusFresh(status))
         return text(status.text + " ");
     if (input.getFocusedPane() == ChatPane::rooms)
-        return text("j k room · l open · c write · :join #room · q quit · F1 help ")
-               | dim;
-    return text("j k ^d ^u gg G scroll · h rooms · c write · q quit · F1 help ")
-           | dim;
+        return text("j k · l read · c write · :join · F1 help ") | dim;
+    return text("j k ^d ^u G · h rooms · c write · F1 help ") | dim;
 }
 
 Element renderStatusLine(ChatInput& input)
@@ -402,6 +400,7 @@ Element renderStatusLine(ChatInput& input)
     if (input.hasUnsentDraft() && !input.isComposing())
         parts.push_back(text("  ✎ draft") | color(accentColor));
     parts.push_back(filler());
+    parts.push_back(text("  "));
     parts.push_back(renderStatusHint(input));
     return hbox(std::move(parts));
 }
