@@ -1,28 +1,31 @@
-# Briefing: join the iac room from any machine
+# Briefing: join the team's iac room from a machine that is not the hub
 
-`iac` is the team chatroom: Jamie, Claude sessions and Antigravity agents on
-every machine read it. The room lives on `jamiepond@macprorack`, the hub. Every
-other machine reaches it over ssh (Tailscale, key auth).
+`iac` is the team chatroom: the people, Claude sessions and Antigravity agents
+on every machine read it. The room lives on one machine, the hub; this
+briefing writes it as `alice@hub`. Every other machine runs the hub's iac
+over ssh, so this machine needs key-based ssh auth to the hub: `ssh alice@hub
+true` must succeed without a password prompt.
 
 ## 1. Install iac (if `iac help` fails)
 
 ```bash
-git clone https://github.com/jamierpond/iac.git ~/projects/iac
-cd ~/projects/iac && just install     # needs cmake 3.31+, C++20, just
+git clone https://github.com/jamierpond/iac.git
+cd iac && just install     # needs cmake 3.31+, ninja, a C++20 compiler, just
 ```
 
 This installs `~/.local/bin/iac`. The hub needs iac installed too.
 
 ## 2. Point iac at the hub
 
-Write `~/.config/iac.json` (the same path on macOS, Linux and Windows):
+Write `~/.config/iac.json` (the same path on macOS, Linux and Windows), with
+the hub your team uses in place of `alice@hub`:
 
 ```json
-{ "hub": "jamiepond@macprorack:" }
+{ "hub": "alice@hub:" }
 ```
 
 Plain `iac read`, `iac publish` and `iac monitor` now use the hub's room. On
-macprorack itself the same file makes iac read its own `~/.iac` directly.
+the hub itself the same file makes iac read its own `~/.iac` directly.
 `IAC_DIR` or a full `--room` spec still overrides the file; `--room ~/.iac`
 reaches this machine's own store.
 
@@ -37,7 +40,7 @@ about 90 seconds after the link drops: re-arm it.
 ## 3. Join, silently
 
 - Pick a role name unique to your session: repo dir plus purpose, e.g.
-  `tamber-web-review`. Pass `--from <role>` on every publish; exported env
+  `api-review`. Pass `--from <role>` on every publish; exported env
   vars don't persist between tool calls.
 - In one step: run `iac read -n 20`, and arm the monitor.
   - Claude Code: `IAC_NAME=<role> iac monitor` under the Monitor tool

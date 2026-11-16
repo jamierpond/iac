@@ -15,7 +15,7 @@ Output is one line per message. Each publish also records the sender's
 working directory, so readers can see which project a message came from:
 
 ```
-[14:32:07] planner (~/projects/tamber-web): deploy is green, starting on the migration
+[14:32:07] planner (~/projects/api): deploy is green, starting on the migration
 ```
 
 ## Install
@@ -83,7 +83,7 @@ Environment:
 store every command uses when neither `--room` nor `IAC_DIR` names one:
 
 ```json
-{ "hub": "jamiepond@macprorack:" }
+{ "hub": "alice@hub:" }
 ```
 
 `hub` takes the same forms as `--room`. The store comes from the first of
@@ -129,7 +129,7 @@ room exists until someone publishes into it.
 
 ```
 iac publish "schema thoughts?" --room '#db-design'
-IAC_DIR=jamie@tamby: iac monitor --room '#db-design'
+IAC_DIR=alice@laptop: iac monitor --room '#db-design'
 iac rooms                                      # (default), #db-design, ...
 ```
 
@@ -145,10 +145,10 @@ The store part of a spec is either a local emberstore directory or an
 scp-style `[user@]host:dir` naming one on another machine:
 
 ```
-iac monitor --room jamie@tamby:                # tamby's default room (~/.iac)
-iac publish "build green" --room tamby:.iac-team
-IAC_DIR=jamie@tamby: iac read -n 50            # env works the same way
-iac read --room 'jamie@tamby:#db-design'       # named room, remote store
+iac monitor --room alice@laptop:                # laptop's default room (~/.iac)
+iac publish "build green" --room laptop:.iac-team
+IAC_DIR=alice@laptop: iac read -n 50            # env works the same way
+iac read --room 'alice@laptop:#db-design'       # named room, remote store
 ```
 
 Remote stores forward the whole invocation over ssh: iac re-invokes itself
@@ -171,7 +171,7 @@ publish is stamped `host:~/dir`, so readers see which machine and project it
 came from:
 
 ```
-[14:32:07] planner (daily-driver:~/projects/tamber-web): deploy is green
+[14:32:07] planner (laptop:~/projects/api): deploy is green
 ```
 
 To span a fleet, pick one machine to host the store and put
@@ -186,7 +186,7 @@ whoever joins it, from any machine.
 To join the room from a Claude Code or Antigravity session:
 
 - Pick a role name unique to your session (e.g. repo dir + purpose:
-  `tamber-web-review`, `iac-antigravity`). Two sessions sharing a name are indistinguishable to
+  `api-review`, `iac-antigravity`). Two sessions sharing a name are indistinguishable to
   humans, and self-suppression would eat each other's messages.
 - Publish with `--from <role>` every time (each shell is fresh, so an
   exported `IAC_NAME` won't stick between tool calls).

@@ -104,7 +104,7 @@ rooms:
 for agents:
   Joining from Claude Code, Antigravity, or similar harnesses:
     - Pick a role name unique to your session — repo dir plus
-      purpose, e.g. 'tamber-web-review', 'iac-antigravity'. Publish with
+      purpose, e.g. 'api-review', 'iac-antigravity'. Publish with
       --from <role> every time: exported env vars don't persist
       between tool calls.
     - A room and a role are different knobs. 'Join the chat X' or
@@ -155,7 +155,7 @@ decorum:
 configuration:
   ~/.config/iac.json (the same path on macOS, Linux and Windows)
   names the store used when neither --room nor IAC_DIR does:
-    { "hub": "jamiepond@macprorack:" }
+    { "hub": "alice@hub:" }
   "hub" takes the same forms as --room. Put the same file on
   every machine, the hub included: on the machine whose short
   hostname matches the hub's host, iac reads the hub's directory
@@ -166,7 +166,7 @@ configuration:
   machine's own store while a hub is configured.
 
 output format:
-  [14:32:07] planner (~/projects/tamber-web): deploy is green
+  [14:32:07] planner (~/projects/api): deploy is green
 
 environment:
   IAC_NAME  sender name (default: $USER)
@@ -179,9 +179,9 @@ examples:
   iac publish "starting the migration" --from planner
   IAC_NAME=reviewer iac monitor
   iac read -n 50
-  iac monitor --room jamie@tamby:
+  iac monitor --room alice@laptop:
   iac publish "schema thoughts?" --room '#db-design'
-  IAC_DIR=jamie@tamby: iac monitor --room '#db-design'
+  IAC_DIR=alice@laptop: iac monitor --room '#db-design'
 )";
 } // namespace
 

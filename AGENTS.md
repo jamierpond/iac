@@ -2,10 +2,10 @@
 
 ## iac — Inter-Agent Chat Guidelines
 
-`iac` (`~/.local/bin/iac`) is a shared inter-agent communication channel for AI coding agents (Claude Code, Antigravity, etc.) and human developers. It allows agents operating in the same workspace or across different repositories and remote machines to coordinate, exchange progress, and collaborate in real-time. Jamie, other Claude sessions, and Antigravity agents read it — treat it as the team channel.
+`iac` (`~/.local/bin/iac`) is a shared inter-agent communication channel for AI coding agents (Claude Code, Antigravity, etc.) and human developers. It allows agents operating in the same workspace or across different repositories and remote machines to coordinate, exchange progress, and collaborate in real-time. People, Claude sessions and Antigravity agents read it — treat it as the team channel.
 
 ### Identity and Role Naming
-- Always pick a role name unique to your active session: `<repo-dir>-<purpose>` (e.g. `iac-antigravity`, `iac-claude`, `tamber-web-review`).
+- Always pick a role name unique to your active session: `<repo-dir>-<purpose>` (e.g. `iac-antigravity`, `iac-claude`, `api-review`).
 - Always pass `--from <role>` when calling `iac publish` (environment variables do not reliably persist between isolated agent tool calls).
 
 ### Session Initialization (Silent Join)
@@ -74,12 +74,12 @@ iac rooms
 
 Every command takes `--room <[dir | [user@]host:dir][#name]>` (`IAC_DIR` takes the
 same forms; a bare `#name` composes with it). With neither, the store is the
-`hub` named in `~/.config/iac.json` (e.g. `{ "hub": "jamiepond@macprorack:" }`),
+`hub` named in `~/.config/iac.json` (e.g. `{ "hub": "alice@hub:" }`),
 else `~/.iac`; `--room ~/.iac` reaches the local store while a hub is configured. When
 the hub can't be reached within 5 seconds, iac prints one line naming it and exits 255;
 a monitor exits 255 about 90 seconds after the link drops: re-arm it. Remote stores re-invoke iac over
 ssh, so the host needs iac installed and key-based ssh auth. `iac help` prints
-the full usage. Source: `~/projects/iac`.
+the full usage. Source: https://github.com/jamierpond/iac.
 
 ---
 
@@ -98,8 +98,8 @@ just clean        # Delete build/
 Dependencies are managed by lockstep (`tamber-inc/emberstore` → `eacp` + `Miro`), pinned in `lockstep.lock`. Branch-pinned deps (eacp@develop, emberstore@main) stay at the commit in `lockstep.lock` until you run `just update-deps` or `lockstep update <Name>`. To develop against the local checkouts:
 
 ```bash
-just build -DLOCKSTEP_emberstore_SOURCE=$HOME/projects/emberstore \
-           -DLOCKSTEP_eacp_SOURCE=$HOME/projects/eacp
+just build -DLOCKSTEP_emberstore_SOURCE=/path/to/emberstore \
+           -DLOCKSTEP_eacp_SOURCE=/path/to/eacp
 ```
 
 ## Code Style
@@ -107,3 +107,4 @@ just build -DLOCKSTEP_emberstore_SOURCE=$HOME/projects/emberstore \
 - **House Style**: eacp standard (Allman braces, 4-space indentation, 85-column margin, `auto` for locals).
 - **Comments**: Keep comments minimal; only comment when code cannot express a critical constraint.
 - Always run `clang-format -i` (or `just format`) on modified files before committing (the config is checked in).
+- **Built for anyone**: iac is for anyone who clones it, not one person's setup. No personal machine names, usernames, home-directory layouts or package managers in code, help, docs, tests or scripts. Examples use `alice@hub:` for the hub, `laptop` for another machine and roles like `api-review`. A need specific to one machine becomes an option or an environment variable with a neutral default.

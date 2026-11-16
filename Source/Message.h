@@ -27,7 +27,7 @@ std::string abbreviateHome(const std::string& path);
 // When the message was sent, as local "HH:MM:SS".
 std::string formatTimeOfDay(const Message& message);
 
-// "[14:32:07] planner (~/projects/tamber-web): deploy is green", no newline.
+// "[14:32:07] planner (~/projects/api): deploy is green", no newline.
 std::string formatMessageLine(const Message& message);
 
 void printMessage(const Message& message);

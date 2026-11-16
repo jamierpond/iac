@@ -10,7 +10,7 @@ using namespace iac;
 
 namespace
 {
-constexpr auto hubSshTarget = "jamiepond@macprorack";
+constexpr auto hubSshTarget = "alice@hub";
 constexpr auto expectedConnectTimeoutOption = "ConnectTimeout=5";
 constexpr auto localRoomArgument = "--room ~/.iac";
 
@@ -28,10 +28,9 @@ bool contains(const std::string& text, const std::string& part)
 auto tForwardedDefaultStore =
     test("RemoteRoom/a forwarded room always names its store") = []
 {
-    check(getForwardedRoomSpecification(makeRoomOnHost("macprorack")) == "~/.iac");
-    check(getForwardedRoomSpecification({"macprorack", {}, "team"})
-          == "~/.iac#team");
-    check(getForwardedRoomSpecification({"macprorack", "/srv/chat", "team"})
+    check(getForwardedRoomSpecification(makeRoomOnHost("hub")) == "~/.iac");
+    check(getForwardedRoomSpecification({"hub", {}, "team"}) == "~/.iac#team");
+    check(getForwardedRoomSpecification({"hub", "/srv/chat", "team"})
           == "/srv/chat#team");
 };
 

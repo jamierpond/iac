@@ -12,7 +12,7 @@ using namespace iac;
 namespace
 {
 constexpr auto configurationFileName = "iac.json";
-constexpr auto hubHostname = "macprorack";
+constexpr auto hubHostname = "hub";
 
 eacp::FilePath writeConfigurationFile(const testing::TemporaryStore& store,
                                       const std::string& contents)
@@ -44,11 +44,11 @@ Room makeRoomOnHost(const std::string& sshTarget)
 auto tHubFromFile = test("HubConfiguration/a hub key names the room") = []
 {
     const auto store = testing::TemporaryStore {};
-    const auto path = writeConfigurationFile(
-        store, R"({"hub": "jamiepond@macprorack:~/chat#team"})");
+    const auto path =
+        writeConfigurationFile(store, R"({"hub": "alice@hub:~/chat#team"})");
     const auto hub = readHubRoomFromConfigurationFile(path);
     check(hub.has_value());
-    check(hub->sshTarget == "jamiepond@macprorack");
+    check(hub->sshTarget == "alice@hub");
     check(hub->directory == "~/chat");
     check(hub->name == "team");
 };
@@ -79,7 +79,7 @@ auto tNotAnObject =
 {
     const auto store = testing::TemporaryStore {};
     check(doesReadingThrowConfigurationFileError(
-        writeConfigurationFile(store, R"(["jamiepond@macprorack:"])")));
+        writeConfigurationFile(store, R"(["alice@hub:"])")));
 };
 
 auto tHubNotAString =
@@ -96,18 +96,17 @@ auto tHubIsThisMachine = test(
     "HubConfiguration/the hub is this machine when its host matches the hostname") =
     []
 {
-    check(isHubThisMachine(makeRoomOnHost("jamiepond@macprorack"), hubHostname));
-    check(isHubThisMachine(makeRoomOnHost("macprorack"), hubHostname));
-    check(isHubThisMachine(makeRoomOnHost("jamiepond@MacProRack"), hubHostname));
-    check(
-        isHubThisMachine(makeRoomOnHost("macprorack.tail1234.ts.net"), hubHostname));
+    check(isHubThisMachine(makeRoomOnHost("alice@hub"), hubHostname));
+    check(isHubThisMachine(makeRoomOnHost("hub"), hubHostname));
+    check(isHubThisMachine(makeRoomOnHost("alice@Hub"), hubHostname));
+    check(isHubThisMachine(makeRoomOnHost("hub.example.com"), hubHostname));
 };
 
 auto tHubIsAnotherMachine = test(
     "HubConfiguration/the hub is not this machine when the host differs or is local") =
     []
 {
-    check(!isHubThisMachine(makeRoomOnHost("jamiepond@daily-driver"), hubHostname));
-    check(!isHubThisMachine(makeRoomOnHost("macprorack2"), hubHostname));
+    check(!isHubThisMachine(makeRoomOnHost("alice@laptop"), hubHostname));
+    check(!isHubThisMachine(makeRoomOnHost("hub2"), hubHostname));
     check(!isHubThisMachine(Room {}, hubHostname));
 };

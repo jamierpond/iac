@@ -16,14 +16,18 @@ constexpr auto anyTimestamp = std::int64_t {1000};
 
 Messages readRoom(const Room& room)
 {
-    return openRoomDatabase(room).document<Messages>(getRoomDocumentName(room)).read();
+    return openRoomDatabase(room)
+        .document<Messages>(getRoomDocumentName(room))
+        .read();
 }
 } // namespace
 
-auto tComposePublishes = test("ChatSession/a composed message is published to the open room as the chat's sender") = []
+auto tComposePublishes = test(
+    "ChatSession/a composed message is published to the open room as the chat's sender") =
+    []
 {
     const auto store = testing::TemporaryStore {};
-    auto session = ChatSession {store.getRoom(), {"jamie", "/work"}};
+    auto session = ChatSession {store.getRoom(), {"alice", "/work"}};
 
     const auto result = session.submitComposedText("hello @iac-chat\n");
     check(result.kind == ComposeActionKind::sendMessage);
@@ -32,18 +36,20 @@ auto tComposePublishes = test("ChatSession/a composed message is published to th
     const auto messages = readRoom(store.getRoom());
     check(messages.size() == 1);
     const auto& message = messages.begin()->second;
-    check(message.sender == "jamie");
+    check(message.sender == "alice");
     check(message.text == "hello @iac-chat");
     check(message.cwd == "/work");
     check(session.getRooms().getActiveRoomMessages().size() == 1);
 };
 
-auto tJoinThenPublish = test("ChatSession/after /join, messages go to that room only") = []
+auto tJoinThenPublish =
+    test("ChatSession/after /join, messages go to that room only") = []
 {
     const auto store = testing::TemporaryStore {};
-    auto session = ChatSession {store.getRoom(), {"jamie", {}}};
+    auto session = ChatSession {store.getRoom(), {"alice", {}}};
 
-    check(session.submitComposedText("/join #design").kind == ComposeActionKind::joinRoom);
+    check(session.submitComposedText("/join #design").kind
+          == ComposeActionKind::joinRoom);
     check(session.getRooms().getActiveRoomName() == "design");
     session.submitComposedText("in design");
 
@@ -51,23 +57,29 @@ auto tJoinThenPublish = test("ChatSession/after /join, messages go to that room 
     check(readRoom(store.getRoom()).empty());
 };
 
-auto tOtherPublishersCountUnread = test("ChatSession/another agent's publish shows as unread in a room not open") = []
+auto tOtherPublishersCountUnread = test(
+    "ChatSession/another agent's publish shows as unread in a room not open") = []
 {
     const auto store = testing::TemporaryStore {};
-    check(publishToLocalRoom(store.getRoom("ops"), Message {"x", "before", {}, anyTimestamp}));
-    auto session = ChatSession {store.getRoom(), {"jamie", {}}};
+    check(publishToLocalRoom(store.getRoom("ops"),
+                             Message {"x", "before", {}, anyTimestamp}));
+    auto session = ChatSession {store.getRoom(), {"alice", {}}};
     check(session.getRooms().getUnreadCount("ops") == 0);
 
-    check(publishToLocalRoom(store.getRoom("ops"), Message {"x", "after", {}, anyTimestamp + 1}));
+    check(publishToLocalRoom(store.getRoom("ops"),
+                             Message {"x", "after", {}, anyTimestamp + 1}));
     session.reloadRoom("ops");
     check(session.getRooms().getUnreadCount("ops") == 1);
 };
 
-auto tNewRoomFound = test("ChatSession/a room created by someone else appears with its messages unread") = []
+auto tNewRoomFound = test(
+    "ChatSession/a room created by someone else appears with its messages unread") =
+    []
 {
     const auto store = testing::TemporaryStore {};
-    auto session = ChatSession {store.getRoom(), {"jamie", {}}};
-    check(publishToLocalRoom(store.getRoom("fresh"), Message {"x", "hi", {}, anyTimestamp}));
+    auto session = ChatSession {store.getRoom(), {"alice", {}}};
+    check(publishToLocalRoom(store.getRoom("fresh"),
+                             Message {"x", "hi", {}, anyTimestamp}));
 
     session.reloadRoomList();
     const auto names = session.getRooms().getRoomNames();
@@ -75,10 +87,11 @@ auto tNewRoomFound = test("ChatSession/a room created by someone else appears wi
     check(session.getRooms().getUnreadCount("fresh") == 1);
 };
 
-auto tErrorsDontPublish = test("ChatSession/a bad command reports an error and publishes nothing") = []
+auto tErrorsDontPublish =
+    test("ChatSession/a bad command reports an error and publishes nothing") = []
 {
     const auto store = testing::TemporaryStore {};
-    auto session = ChatSession {store.getRoom(), {"jamie", {}}};
+    auto session = ChatSession {store.getRoom(), {"alice", {}}};
     const auto result = session.submitComposedText("/nope");
     check(result.isError);
     check(readRoom(store.getRoom()).empty());
