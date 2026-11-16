@@ -39,8 +39,8 @@ set -eu
 # just and cmake come from nix on the Linux hub, and its login zsh does not add them.
 PATH="$HOME/.nix-profile/bin:$PATH"
 cd ~/projects/iac
-if [ -n "$(git status --porcelain)" ]; then
-    echo "uncommitted changes in ~/projects/iac; not building" >&2
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    echo "uncommitted changes to tracked files in ~/projects/iac; not building" >&2
     exit 3
 fi
 git pull --ff-only --quiet
