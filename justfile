@@ -48,7 +48,8 @@ install-without-coverage prefix=prefix: build
 
 coverage_build_dir := "build-coverage"
 coverage_cmake_arguments := "-DPOND_LINE_COVERAGE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
-line_coverage := coverage_build_dir / "PondLineCoverage/line-coverage.py --app iac --program iac --installed-in " + prefix / "bin" + " --own-code-folder Source --not-own-code-folder Tests"
+# Quoted so line-coverage.py expands ~ on each machine it runs on, not the shell here.
+line_coverage := coverage_build_dir / "PondLineCoverage/line-coverage.py --app iac --program iac --installed-in '~/.local/bin' --own-code-folder Source --not-own-code-folder Tests"
 
 [doc('Build iac with line-coverage counters, in build-coverage')]
 [unix]
@@ -59,6 +60,11 @@ coverage-build:
 [unix]
 coverage-report *arguments:
     {{line_coverage}} report {{arguments}}
+
+[doc("Copy a host's line-coverage counts and its programs here, for coverage-report")]
+[unix]
+coverage-collect-from-host host *arguments:
+    {{line_coverage}} collect {{host}} {{arguments}}
 
 [doc('Delete the line-coverage counts and kept programs here, or on user@host')]
 [unix]

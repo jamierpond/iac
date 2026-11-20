@@ -30,6 +30,8 @@ just install    # builds Release and installs iac into ~/.local/bin
 For now `just install` installs a build that counts which lines of iac's code
 run (needs clang), so `just coverage-report` can show commands nobody uses.
 `just install-without-coverage` installs the normal build.
+`just coverage-collect-from-host user@host` copies another machine's counts
+here, and the report then includes them.
 
 When `iac monitor` or `iac chat` crashes on macOS or Windows, a report lands in
 the pond data folder under `iac/Crashes/iac` (`~/Library/Application
