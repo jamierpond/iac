@@ -29,9 +29,41 @@ test: build
 run *args: build
     {{binary}} {{args}}
 
-[doc('Build, then install iac into <prefix>/bin (default ~/.local/bin)')]
-install prefix=prefix: build
+[doc('Coverage is the default for now: build iac with line-coverage counters and install it into <prefix>/bin (default ~/.local/bin), keeping the old and new programs for coverage-report')]
+[unix]
+install prefix=prefix: coverage-build
+    {{line_coverage}} keep --programs "{{prefix}}/bin"
+    cmake --install {{coverage_build_dir}} --prefix "{{prefix}}"
+    {{line_coverage}} keep --programs "{{prefix}}/bin"
+
+[doc('Line coverage needs clang, so on Windows install is install-without-coverage')]
+[windows]
+install prefix=prefix: (install-without-coverage prefix)
+
+[doc('Build, then install the normal iac, without line-coverage counters, into <prefix>/bin (default ~/.local/bin)')]
+install-without-coverage prefix=prefix: build
     cmake --install {{build_dir}} --prefix "{{prefix}}"
+
+# ---- Line coverage: which lines of iac's own code agents actually run ----
+
+coverage_build_dir := "build-coverage"
+coverage_cmake_arguments := "-DPOND_LINE_COVERAGE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+line_coverage := coverage_build_dir / "PondLineCoverage/line-coverage.py --app iac --program iac --installed-in " + prefix / "bin" + " --own-code-folder Source --not-own-code-folder Tests"
+
+[doc('Build iac with line-coverage counters, in build-coverage')]
+[unix]
+coverage-build:
+    just build_dir={{coverage_build_dir}} build {{coverage_cmake_arguments}}
+
+[doc('Print the code that never ran in any installed coverage build, largest first, and write an HTML per-line view')]
+[unix]
+coverage-report *arguments:
+    {{line_coverage}} report {{arguments}}
+
+[doc('Delete the line-coverage counts and kept programs here, or on user@host')]
+[unix]
+coverage-reset host="" *arguments:
+    {{line_coverage}} reset {{host}} {{arguments}}
 
 [doc('Move branch-pinned dependencies to their branch heads and rewrite lockstep.lock')]
 update-deps:

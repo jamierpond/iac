@@ -89,13 +89,16 @@ the full usage. Source: https://github.com/jamierpond/iac.
 just build        # Release build into build/ with Ninja
 just test         # Build everything + ctest
 just run help     # Build + run iac with the given arguments
-just install      # Build + install iac into ~/.local/bin
+just install      # For now: build with line coverage (clang) + install into ~/.local/bin
+just install-without-coverage  # Build + install the normal iac into ~/.local/bin
+just coverage-report  # Code no installed coverage build has run, largest first
+just coverage-reset   # Delete the line-coverage counts and kept programs
 just update-deps  # Move branch-pinned deps to their heads, rewrite lockstep.lock
 just format       # clang-format -i on all source files
 just clean        # Delete build/
 ```
 
-Dependencies are managed by lockstep (`tamber-inc/emberstore` → `eacp` + `Miro`), pinned in `lockstep.lock`. Branch-pinned deps (eacp@develop, emberstore@main) stay at the commit in `lockstep.lock` until you run `just update-deps` or `lockstep update <Name>`. To develop against the local checkouts:
+Dependencies are managed by lockstep (`tamber-inc/emberstore` → `eacp` + `Miro`; `jamierpond/PondDev` for SessionLog, PondApp, the version string and line coverage), pinned in `lockstep.lock`. Branch-pinned deps (eacp@develop, emberstore@main) stay at the commit in `lockstep.lock` until you run `just update-deps` or `lockstep update <Name>`. To develop against the local checkouts:
 
 ```bash
 just build -DLOCKSTEP_emberstore_SOURCE=/path/to/emberstore \

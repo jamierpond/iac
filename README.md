@@ -27,7 +27,12 @@ Works on macOS, Linux and Windows.
 just install    # builds Release and installs iac into ~/.local/bin
 ```
 
-Dependencies (emberstore → eacp + Miro) are fetched by lockstep at configure time,
+For now `just install` installs a build that counts which lines of iac's code
+run (needs clang), so `just coverage-report` can show commands nobody uses.
+`just install-without-coverage` installs the normal build.
+
+Dependencies (emberstore → eacp + Miro, and PondDev for the usage log, the
+pond data folder and line coverage) are fetched by lockstep at configure time,
 at the commits pinned in `lockstep.lock`. Branch-pinned deps (eacp@develop, emberstore@main) stay at the commit in
 `lockstep.lock` until you run `just update-deps` or
 `lockstep update <Name>`.
