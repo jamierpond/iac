@@ -65,6 +65,10 @@ coverage-report *arguments:
 coverage-reset host="" *arguments:
     {{line_coverage}} reset {{host}} {{arguments}}
 
+[doc('List the crash reports nobody has marked fixed here and on other machines (list [HOST ...]), or mark one fixed (mark-fixed HOST ID)')]
+crash-reports *arguments:
+    python3 {{build_dir}}/PondCrashReports/crash-reports.py --app iac {{arguments}}
+
 [doc('Move branch-pinned dependencies to their branch heads and rewrite lockstep.lock')]
 update-deps:
     {{msvc}} cmake -S . -B {{build_dir}} -G Ninja -DLOCKSTEP_MODE=update

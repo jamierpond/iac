@@ -132,6 +132,7 @@ add_executable(iac Source/Main.cpp)
 pond_add_version_library(iacVersion)
 target_link_libraries(iac PRIVATE iacCore iacVersion)
 pond_write_line_coverage(iac APP_NAME iac)
+pond_enable_crash_reports(iac)
 
 # Keeps the directory libcurl was linked from in the installed binary, so it still loads when libcurl lives outside the system directories (Nix).
 set_target_properties(iac PROPERTIES INSTALL_RPATH_USE_LINK_PATH ON)

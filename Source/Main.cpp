@@ -10,6 +10,7 @@
 #include "RemoteRoom.h"
 #include "UsageLog.h"
 
+#include <PondCrashReports/CrashReports.h>
 #include <PondVersion.h>
 
 #include <algorithm>
@@ -133,6 +134,34 @@ int printVersion()
     return 0;
 }
 
+const auto longRunningCommandNames = std::set<std::string> {"monitor", "chat"};
+
+bool hasCrashForTestingFlag(const std::vector<std::string>& args)
+{
+    return std::ranges::find(args, pondcrashreports::crashForTestingFlag)
+           != args.end();
+}
+
+// Starting the crash handler process adds 10 to 25 ms, several times what a
+// command that prints and exits takes, so only the commands that keep running
+// start it.
+bool shouldStartCrashReports(const std::vector<std::string>& args)
+{
+    return longRunningCommandNames.contains(args.front())
+           || hasCrashForTestingFlag(args);
+}
+
+void startCrashReportsIfWorthIt(const std::vector<std::string>& args,
+                                int argc,
+                                char* argv[])
+{
+    if (shouldStartCrashReports(args))
+    {
+        pondcrashreports::startCrashReports(
+            {.appName = "iac", .release = pond::getVersionString()}, argc, argv);
+    }
+}
+
 const auto helpCommandNames = std::set<std::string> {"help", "--help", "-h"};
 
 int runPublishCommandWithEnvironmentDefaults(const Room& room,
@@ -172,7 +201,9 @@ int runAndLogCommand(const Room& room, const std::vector<std::string>& args)
 } // namespace
 } // namespace iac
 
-int main(int argc, char* argv[])
+namespace
+{
+int runIac(int argc, char* argv[])
 {
     auto args = iac::commandLineArguments(argc, argv);
 
@@ -203,5 +234,18 @@ int main(int argc, char* argv[])
     if (args.empty())
         return iac::printUsageError();
 
+    iac::startCrashReportsIfWorthIt(args, argc, argv);
     return iac::runAndLogCommand(room, args);
+}
+} // namespace
+
+int main(int argc, char* argv[])
+{
+    if (auto handlerExitCode =
+            pondcrashreports::runCrashHandlerIfRequested(argc, argv))
+    {
+        return *handlerExitCode;
+    }
+
+    return runIac(argc, argv);
 }

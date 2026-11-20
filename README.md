@@ -31,8 +31,14 @@ For now `just install` installs a build that counts which lines of iac's code
 run (needs clang), so `just coverage-report` can show commands nobody uses.
 `just install-without-coverage` installs the normal build.
 
+When `iac monitor` or `iac chat` crashes on macOS or Windows, a report lands in
+the pond data folder under `iac/Crashes/iac` (`~/Library/Application
+Support/pond` on macOS). `just crash-reports list` shows the ones nobody has
+marked fixed. Commands that print and exit skip crash reports, because starting
+the crash handler takes longer than the command itself.
+
 Dependencies (emberstore → eacp + Miro, and PondDev for the usage log, the
-pond data folder and line coverage) are fetched by lockstep at configure time,
+pond data folder, line coverage and crash reports) are fetched by lockstep at configure time,
 at the commits pinned in `lockstep.lock`. Branch-pinned deps (eacp@develop, emberstore@main) stay at the commit in
 `lockstep.lock` until you run `just update-deps` or
 `lockstep update <Name>`.
