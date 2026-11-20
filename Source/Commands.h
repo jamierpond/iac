@@ -25,8 +25,4 @@ int runMonitorCommand(const Room& room,
                       const std::string& senderNameFromEnvironment);
 
 int runRoomsCommand(const Room& room);
-
-int runChatCommand(const Room& room,
-                   const std::vector<std::string>& arguments,
-                   const std::string& currentDirectory);
 } // namespace iac

@@ -45,13 +45,12 @@ std::string buildRemoteShellCommand(const std::vector<std::string>& arguments)
 }
 
 eacp::Processes::ProcessOptions makeSshOptions(const Room& room,
-                                               std::vector<std::string> arguments,
-                                               const char* terminalFlag)
+                                               std::vector<std::string> arguments)
 {
     addForwardedRoomArgument(room, arguments);
     auto options = eacp::Processes::ProcessOptions {};
     options.executable = "ssh";
-    options.arguments = {terminalFlag};
+    options.arguments = {"-T"};
     for (auto& option: getSshConnectionOptions())
         options.arguments.push_back(option);
     if (!stdinIsTty())
@@ -125,11 +124,6 @@ std::string getShortHostname()
 // to its own environment.
 int runOverSsh(const Room& room, std::vector<std::string> arguments)
 {
-    return runSsh(room, makeSshOptions(room, std::move(arguments), "-T"));
-}
-
-int runOverSshWithTerminal(const Room& room, std::vector<std::string> arguments)
-{
-    return runSsh(room, makeSshOptions(room, std::move(arguments), "-t"));
+    return runSsh(room, makeSshOptions(room, std::move(arguments)));
 }
 } // namespace iac

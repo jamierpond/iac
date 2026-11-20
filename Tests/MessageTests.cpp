@@ -50,11 +50,10 @@ auto tCursorSkipsExisting = test("Message/MessageCursor yields only messages aft
 
     messages["002"] = Message {"a", "new one", {}, firstTimestamp};
     messages["003"] = Message {"b", "new two", {}, firstTimestamp};
-    check(cursor.countNewMessages(messages) == 2);
 
     const auto fresh = cursor.takeNewMessages(messages);
     check(fresh.size() == 2);
     check(fresh[0].text == "new one");
     check(fresh[1].text == "new two");
-    check(cursor.countNewMessages(messages) == 0);
+    check(cursor.takeNewMessages(messages).empty());
 };

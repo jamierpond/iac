@@ -39,34 +39,15 @@ else ()
     set(platformSources Source/Platform-Posix.cpp)
 endif ()
 
-# text-buffer turns its own warnings into errors unless the includer defines
-# this; iac keeps -Werror to its own targets (below), so a new compiler warning
-# inside a dependency can't stop iac building.
+# text-buffer, which PondDev brings, turns its own warnings into errors unless
+# the includer defines this; iac keeps -Werror to its own targets (below), so a
+# new compiler warning inside a dependency can't stop iac building.
 function(set_strict_warnings_level target)
 endfunction()
 
-# eacp has no terminal UI. FTXUI draws iac chat; its own loop is not used:
-# an eacp timer pumps it, as in DiffView.
-lockstep_add_package(
-        NAME ftxui
-        GITHUB_REPOSITORY ArthurSonzogni/FTXUI
-        GIT_TAG v7.0.3
-        SYSTEM YES
-        OPTIONS
-            "FTXUI_ENABLE_INSTALL OFF"
-            "FTXUI_QUIET ON")
-
-# VimEditor, the editor behind chat's prompt, the same one dv's comment box uses.
-#   cmake -B build -DLOCKSTEP_text-buffer_SOURCE=$HOME/projects/text-buffer
-lockstep_add_package(
-        NAME text-buffer
-        GITHUB_REPOSITORY jamierpond/text-buffer
-        GIT_TAG main
-        SYSTEM YES)
-
 # SessionLog (the per-launch usage log), PondApp (the pond data folder),
-# pond_add_version_library and line coverage. Added after eacp and
-# text-buffer, so PondDev uses iac's copies instead of fetching its own.
+# pond_add_version_library and line coverage. Added after eacp, so PondDev
+# uses iac's copy instead of fetching its own.
 # Work against a local checkout with:
 #   cmake -B build -DLOCKSTEP_PondDev_SOURCE=$HOME/projects/PondDev
 lockstep_add_package(
@@ -88,19 +69,8 @@ pond_add_line_coverage_counters()
 
 # Everything but main(), so the tests link the same code the binary runs.
 add_library(iacCore STATIC
-        Source/ChatCommand.cpp
-        Source/ChatInput.cpp
-        Source/ChatKeymap.cpp
-        Source/ChatMessagePane.cpp
-        Source/ChatRooms.cpp
-        Source/ChatScreen.cpp
-        Source/ChatSession.cpp
-        Source/ChatView.cpp
-        Source/ComposeLine.cpp
-        Source/EditorKeys.cpp
         Source/HelpCommand.cpp
         Source/HubConfiguration.cpp
-        Source/LineEdit.cpp
         Source/Message.cpp
         Source/MessageAddressing.cpp
         Source/MonitorCommand.cpp
@@ -116,12 +86,8 @@ add_library(iacCore STATIC
 target_include_directories(iacCore PUBLIC Source)
 target_link_libraries(iacCore PUBLIC
         emberstore
-        VimEditor
         SessionLog
-        PondApp
-        ftxui::screen
-        ftxui::dom
-        ftxui::component)
+        PondApp)
 
 if (WIN32)
     # CommandLineToArgvW

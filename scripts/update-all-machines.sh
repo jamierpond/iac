@@ -5,7 +5,6 @@
 #   2. Ends each 'iac monitor' started before its machine's binary was installed.
 #      A running monitor keeps the old binary until it exits; when it exits, the
 #      agent's harness reports that and the agent arms a new one.
-# 'iac chat' screens are listed, never ended: a person is using them.
 #   usage: scripts/update-all-machines.sh [--dry-run] [--keep-monitors] [--checkout <dir>] <hub> [machine...]
 #          a machine is an ssh target, or 'local' for this one
 #          --dry-run: installs nothing and ends nothing; prints each machine's
@@ -15,7 +14,7 @@
 #          directory or absolute; default: the path of the checkout this script is in
 set -u
 
-usage_end_line=15
+usage_end_line=14
 script_checkout=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 checkout_directory=${script_checkout#"$HOME"/}
 
@@ -67,12 +66,12 @@ just install >/dev/null
 
 print_installed_version_command='"$HOME/.local/bin/iac" --version'
 
-# Prints "<pid> <command>" for each iac process older than the installed binary.
+# Prints "<pid> <command>" for each 'iac monitor' older than the installed binary.
 list_stale_commands='
 binary="$HOME/.local/bin/iac"
 installed_at=$(stat -c %Y "$binary" 2>/dev/null || stat -f %m "$binary")
 seconds_since_install=$(( $(date +%s) - installed_at ))
-ps axo pid=,etime=,args= | awk -v since_install="$seconds_since_install" -v wanted="$wanted" "
+ps axo pid=,etime=,args= | awk -v since_install="$seconds_since_install" "
     function to_seconds(elapsed,    parts, count, days) {
         days = 0
         if (split(elapsed, parts, \"-\") == 2) { days = parts[1]; elapsed = parts[2] }
@@ -83,21 +82,15 @@ ps axo pid=,etime=,args= | awk -v since_install="$seconds_since_install" -v want
     {
         pid = \$1; elapsed = \$2; \$1 = \"\"; \$2 = \"\"; sub(/^ +/, \"\")
         is_monitor = (\$0 ~ /^([^ ]*\\/)?iac monitor/) || (\$0 ~ /^ssh .*exec iac .monitor./)
-        is_chat = (\$0 ~ /^([^ ]*\\/)?iac( chat|\$)/) || (\$0 ~ /^ssh .*exec iac .chat./)
-        is_wanted = (wanted == \"monitor\" && is_monitor) || (wanted == \"chat\" && is_chat)
-        if (is_wanted && to_seconds(elapsed) > since_install) print pid, \$0
+        if (is_monitor && to_seconds(elapsed) > since_install) print pid, \$0
     }"
 '
 
-end_stale_monitor_commands="wanted=monitor
-stale=\$( { $list_stale_commands } )
+end_stale_monitor_commands="stale=\$( { $list_stale_commands } )
 if [ -z \"\$stale\" ]; then echo 'no monitor predates the installed iac'; exit 0; fi
 echo \"\$stale\" | cut -c1-160
 if [ \"$is_dry_run\" = false ]; then echo \"\$stale\" | awk '{print \$1}' | xargs kill 2>/dev/null; fi
 "
-
-list_stale_chat_commands="wanted=chat
-$list_stale_commands"
 
 exit_code=0
 expected_version=""
@@ -141,11 +134,6 @@ for (( index = ${#reached_machines[@]} - 1; index >= 0; index-- )); do
     machine=${reached_machines[$index]}
     echo "-- $machine"
     echo "$end_stale_monitor_commands" | run_on_machine "$machine"
-    stale_chats=$(echo "$list_stale_chat_commands" | run_on_machine "$machine")
-    if [ -n "$stale_chats" ]; then
-        echo "left running, still on the old iac (quit and reopen): "
-        echo "$stale_chats" | cut -c1-160
-    fi
 done
 
 exit $exit_code

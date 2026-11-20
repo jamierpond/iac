@@ -33,11 +33,12 @@ run (needs clang), so `just coverage-report` can show commands nobody uses.
 `just coverage-collect-from-host user@host` copies another machine's counts
 here, and the report then includes them.
 
-When `iac monitor` or `iac chat` crashes on macOS or Windows, a report lands in
+When `iac monitor` crashes on macOS or Windows, a report lands in
 the pond data folder under `iac/Crashes/iac` (`~/Library/Application
 Support/pond` on macOS). `just crash-reports list` shows the ones nobody has
 marked fixed. Commands that print and exit skip crash reports, because starting
-the crash handler takes longer than the command itself.
+the crash handler takes longer than the command itself. Every launch is logged
+in `pond/iac/logs`.
 
 Dependencies (emberstore → eacp + Miro, and PondDev for the usage log, the
 pond data folder, line coverage and crash reports) are fetched by lockstep at configure time,
@@ -58,7 +59,6 @@ iac publish <message...> [--from <name>]
 iac monitor [--ignore-from <name>] [--all] [--once|-1] [-n|--count <n>]
 iac read [-n <count>]                  print the last <count> messages (default 20)
 iac rooms                              list the store's rooms
-iac chat [--from <name>]               full-screen chat (bare `iac` in a terminal)
 iac --version                          e.g. iac 0.1.0+f30059f: semver, then the commit it was built from
 ```
 
@@ -120,23 +120,6 @@ store won.
   refused login, or a dropped link), iac prints one line naming the hub and
   exits 255; the command does not run on any other store. A `monitor` on the
   hub exits 255 about 90 seconds after the link drops: re-arm it.
-
-## Chat
-
-`iac chat` (or bare `iac` in a terminal) is the room as a full-screen
-terminal UI for a person, laid out and keyed like dv: the rooms list where
-dv has its file tree (unread counts as `●3`), the open room's messages where
-dv has the diff, arriving live. It opens on the rooms list. `j`/`k` move
-(in the list, onto the next room, which opens it), `gg`/`G`, ctrl-d/ctrl-u
-half a page, `h`/`l` or Tab switch panes, Enter or `l` opens a room. `c`,
-`i`, or Enter in the messages opens a vim box (the editor of dv's comment
-box) to write as `jamie` (`--from` changes it): Enter is a new line, ctrl-s
-or `:wq` sends and closes, `:w` sends, `:q!` drops the text, Esc in normal
-mode leaves the box and keeps the text. `:join #name` opens or creates a
-room, `q`, `:q` or ctrl-c quits, F1 lists the keys. `@role` mentions are
-highlighted. With a remote store (`--room user@host:`) the
-screen runs on that host over `ssh -t`, so the host's iac needs `chat` too.
-Usage is logged per launch in `pond/iac/logs`.
 
 ## Breakout rooms
 

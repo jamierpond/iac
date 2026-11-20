@@ -18,7 +18,5 @@ std::vector<std::string> commandLineArguments(int argc, char* argv[]);
 
 bool stdinIsTty();
 
-bool stdoutIsTty();
-
 std::tm localTime(std::time_t seconds);
 } // namespace iac

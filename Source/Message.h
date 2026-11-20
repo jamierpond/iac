@@ -35,7 +35,7 @@ void printMessage(const Message& message);
 std::vector<Message> getLastMessages(const Messages& messages, std::size_t count);
 
 // Remembers the newest message key seen, so a room re-read after a change
-// yields only what was published since: how monitor and chat follow a room.
+// yields only what was published since: how monitor follows a room.
 class MessageCursor
 {
 public:
@@ -44,11 +44,9 @@ public:
 
     std::vector<Message> takeNewMessages(const Messages& messages);
 
-    std::size_t countNewMessages(const Messages& messages) const;
-
+private:
     void markAllSeen(const Messages& messages);
 
-private:
     std::string lastSeenKey;
 };
 } // namespace iac

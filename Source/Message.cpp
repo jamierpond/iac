@@ -87,13 +87,6 @@ std::vector<Message> MessageCursor::takeNewMessages(const Messages& messages)
     return newMessages;
 }
 
-std::size_t MessageCursor::countNewMessages(const Messages& messages) const
-{
-    const auto distance =
-        std::distance(messages.upper_bound(lastSeenKey), messages.end());
-    return static_cast<std::size_t>(distance);
-}
-
 void MessageCursor::markAllSeen(const Messages& messages)
 {
     if (!messages.empty())

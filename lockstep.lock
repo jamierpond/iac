@@ -146,22 +146,6 @@
       "usesGitLfs": false
     },
     {
-      "commit": "f921fad208912747c17d129a8ef75ec7624b6eec",
-      "hash": "76d9a5b06877766b4efe35bb06ad14e91766b7b597e8975f464b946e0b5c568c",
-      "kind": "git",
-      "name": "ftxui",
-      "patches": [],
-      "requestedRef": "v7.0.3",
-      "submoduleSelection": {
-        "isRecursive": true,
-        "isRestricted": false,
-        "paths": []
-      },
-      "submodules": [],
-      "url": "https://github.com/ArthurSonzogni/FTXUI.git",
-      "usesGitLfs": false
-    },
-    {
       "commit": "a8d28bd082bff18ffbe80996e922b012f915cf07",
       "hash": "3f41212a26fa42c9a22279d049ebeff03f90a25786285da20ef7e753e4ed584d",
       "kind": "git",
@@ -194,6 +178,6 @@
       "usesGitLfs": false
     }
   ],
-  "root": "08cded9df9fed5cd33f043f75cbab13962eee510819b47de10030b2e11a12076",
+  "root": "192911d6274800e7bec4d90c74f9edc3f8910a1339fff0d68f6819f39b411689",
   "version": 1
 }

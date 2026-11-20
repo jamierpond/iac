@@ -118,11 +118,6 @@ Room takeRoomFromArgumentsOrDefault(std::vector<std::string>& args)
     return room;
 }
 
-bool isPersonAtTerminal()
-{
-    return stdinIsTty() && stdoutIsTty();
-}
-
 bool isVersionRequest(const std::vector<std::string>& args)
 {
     return args.size() == 1 && args.front() == "--version";
@@ -134,7 +129,7 @@ int printVersion()
     return 0;
 }
 
-const auto longRunningCommandNames = std::set<std::string> {"monitor", "chat"};
+const auto longRunningCommandName = std::string {"monitor"};
 
 bool hasCrashForTestingFlag(const std::vector<std::string>& args)
 {
@@ -143,11 +138,11 @@ bool hasCrashForTestingFlag(const std::vector<std::string>& args)
 }
 
 // Starting the crash handler process adds 10 to 25 ms, several times what a
-// command that prints and exits takes, so only the commands that keep running
-// start it.
+// command that prints and exits takes, so only monitor, which keeps running,
+// starts it.
 bool shouldStartCrashReports(const std::vector<std::string>& args)
 {
-    return longRunningCommandNames.contains(args.front())
+    return args.front() == longRunningCommandName
            || hasCrashForTestingFlag(args);
 }
 
@@ -182,8 +177,6 @@ int runCommand(const Room& room, const std::vector<std::string>& args)
         return runMonitorCommand(room, args, eacp::getEnvValue("IAC_NAME"));
     if (command == "rooms")
         return runRoomsCommand(room);
-    if (command == "chat")
-        return runChatCommand(room, args, getCurrentDirectory());
     if (helpCommandNames.contains(command))
         return printHelp();
 
@@ -228,9 +221,6 @@ int runIac(int argc, char* argv[])
         return iac::invalidRoomNameExitCode;
     }
 
-    // Bare iac in a terminal is a person, not an agent: open the chat.
-    if (args.empty() && iac::isPersonAtTerminal())
-        args.emplace_back("chat");
     if (args.empty())
         return iac::printUsageError();
 

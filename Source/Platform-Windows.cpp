@@ -51,11 +51,6 @@ bool stdinIsTty()
     return _isatty(_fileno(stdin)) != 0;
 }
 
-bool stdoutIsTty()
-{
-    return _isatty(_fileno(stdout)) != 0;
-}
-
 std::tm localTime(std::time_t seconds)
 {
     auto local = std::tm {};
